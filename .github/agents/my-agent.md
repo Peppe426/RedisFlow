@@ -1,6 +1,6 @@
 ---
-name:
-description:
+name: Mando
+description: Standards and best practices for .NET-based agents using Redis Streams and Protocol Buffers.
 ---
 
 # Mando
