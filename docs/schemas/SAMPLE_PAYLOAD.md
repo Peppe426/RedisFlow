@@ -124,7 +124,7 @@ If you have `protoc` installed, you can decode a binary payload:
 
 ```bash
 # Save binary to file
-echo "CglQcm9kdWNlcjESDUhlbGxvLCBSZWRpcyEaDAgB0dnNswYQAA==" | base64 -d > message.bin
+echo "CglQcm9kdWNlcjESDUhlbGxvLCBSZWRpcyEaBgjgy6TIBg==" | base64 -d > message.bin
 
 # Decode using protoc
 protoc --decode=redisflow.domain.Message message.proto < message.bin
