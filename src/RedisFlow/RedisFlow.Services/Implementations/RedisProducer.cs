@@ -1,3 +1,4 @@
+using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
 using RedisFlow.Contracts;
@@ -30,6 +31,8 @@ public class RedisProducer : IProducer
             throw new ArgumentNullException(nameof(message));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         var db = _redis.GetDatabase();
 
         // Convert domain Message to protobuf MessagePayload
@@ -41,11 +44,7 @@ public class RedisProducer : IProducer
         };
 
         // Serialize to byte array
-        using var stream = new MemoryStream();
-        using var codedOutputStream = new Google.Protobuf.CodedOutputStream(stream, leaveOpen: true);
-        payload.WriteTo(codedOutputStream);
-        codedOutputStream.Flush();
-        var serializedData = stream.ToArray();
+        var serializedData = payload.ToByteArray();
 
         // Add to Redis Stream with single field containing serialized protobuf
         var streamEntry = new NameValueEntry[]

@@ -3,22 +3,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services.Contracts;
-using RedisFlow.Services.Implementations;
-using StackExchange.Redis;
+using RedisFlow.Services.Extensions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
 
-// Register Redis connection
-var redisConnectionString = builder.Configuration["ConnectionStrings:redis"] 
-    ?? "localhost:6379";
-
-builder.Services.AddSingleton<IConnectionMultiplexer>(sp => 
-    ConnectionMultiplexer.Connect(redisConnectionString));
-
-// Register Producer
-builder.Services.AddSingleton<IProducer, RedisProducer>();
+// Register Redis Producer
+builder.Services.AddRedisProducer(builder.Configuration);
 
 var host = builder.Build();
 
