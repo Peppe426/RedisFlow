@@ -13,11 +13,16 @@ public class Message
         get;
     }
 
-    public DateTime CreatedAt { get; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; }
 
-    public Message(string producer, string content)
+    public Message(string producer, string content) : this(producer, content, DateTime.UtcNow)
+    {
+    }
+
+    public Message(string producer, string content, DateTime createdAt)
     {
         Producer = producer;
         Content = content;
+        CreatedAt = createdAt;
     }
 }
