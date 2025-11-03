@@ -70,7 +70,9 @@ public class RedisConsumer : IConsumer
     {
         try
         {
-            await _database.StreamCreateConsumerGroupAsync(_streamName, _consumerGroup, StreamPosition.NewMessages);
+            // Use StreamPosition.Beginning to ensure we can recover messages added before group creation
+            // This is important for scenarios where messages exist in stream before consumer starts
+            await _database.StreamCreateConsumerGroupAsync(_streamName, _consumerGroup, StreamPosition.Beginning);
         }
         catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
         {
@@ -96,12 +98,13 @@ public class RedisConsumer : IConsumer
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            // Claim the message if it's from this consumer or another consumer
+            // Claim the message if it's been idle for at least 5 seconds
+            // This prevents aggressive claiming and allows consumers time to process
             var claimedEntries = await _database.StreamClaimAsync(
                 _streamName,
                 _consumerGroup,
                 _consumerName,
-                0, // Min idle time in milliseconds
+                5000, // Min idle time in milliseconds (5 seconds)
                 new[] { pendingMsg.MessageId }
             );
 

@@ -18,7 +18,7 @@ public class RedisProducer : IProducer
         _streamName = streamName;
     }
 
-    public async Task ProduceAsync(Message message, CancellationToken cancellationToken = default)
+    public async Task<string> ProduceAsync(Message message, CancellationToken cancellationToken = default)
     {
         var protoMessage = new MessageProto
         {
@@ -34,6 +34,7 @@ public class RedisProducer : IProducer
             new NameValueEntry("data", serialized)
         };
 
-        await _database.StreamAddAsync(_streamName, streamValues);
+        var messageId = await _database.StreamAddAsync(_streamName, streamValues);
+        return messageId.ToString();
     }
 }

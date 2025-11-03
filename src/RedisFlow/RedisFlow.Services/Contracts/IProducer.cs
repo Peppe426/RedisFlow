@@ -11,5 +11,6 @@ public interface IProducer
 	/// </summary>
 	/// <param name="message">The message to produce.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
-	Task ProduceAsync(Message message, CancellationToken cancellationToken = default);
+	/// <returns>The Redis stream message ID.</returns>
+	Task<string> ProduceAsync(Message message, CancellationToken cancellationToken = default);
 }
