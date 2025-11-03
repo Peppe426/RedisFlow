@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" Version="9.5.2" />
     <PackageReference Include="coverlet.collector" Version="6.0.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -27,6 +28,7 @@
   <ItemGroup>
     <ProjectReference Include="..\RedisFlow.Services\RedisFlow.Services.csproj" />
     <ProjectReference Include="..\TestBase\TestBase.csproj" />
+    <ProjectReference Include="..\RedisFlow.AppHost\RedisFlow.AppHost.csproj" />
   </ItemGroup>
 
   <ItemGroup>
