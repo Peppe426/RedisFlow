@@ -14,19 +14,25 @@ public class RedisStreamConsumer : IConsumer
     private readonly string _streamKey;
     private readonly string _consumerGroup;
     private readonly string _consumerName;
+    private readonly TimeSpan _pollingDelay;
+    private readonly TimeSpan _errorRetryDelay;
 
     public RedisStreamConsumer(
         IConnectionMultiplexer redis,
         ILogger<RedisStreamConsumer> logger,
         string consumerGroup = "default-group",
         string? consumerName = null,
-        string streamKey = "messages")
+        string streamKey = "messages",
+        TimeSpan? pollingDelay = null,
+        TimeSpan? errorRetryDelay = null)
     {
         _database = redis.GetDatabase();
         _logger = logger;
         _streamKey = streamKey;
         _consumerGroup = consumerGroup;
         _consumerName = consumerName ?? $"consumer-{Guid.NewGuid():N}";
+        _pollingDelay = pollingDelay ?? TimeSpan.FromMilliseconds(100);
+        _errorRetryDelay = errorRetryDelay ?? TimeSpan.FromSeconds(1);
     }
 
     public async Task ConsumeAsync(
@@ -58,7 +64,7 @@ public class RedisStreamConsumer : IConsumer
 
                 if (entries.Length == 0)
                 {
-                    await Task.Delay(100, cancellationToken);
+                    await Task.Delay(_pollingDelay, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
