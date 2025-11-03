@@ -5,6 +5,35 @@
 - **Redis Server:** Hosted locally or on-premise; provides the stream and consumer group capabilities.
 - **Producers:** Two separate .NET console apps pushing serialized messages to the stream.
 - **Consumer:** A .NET console app reading from the stream using a consumer group.
+- **Developer Tooling:** Scripts and diagnostics tools for monitoring stream traffic.
+
+---
+
+## 🛠️ Developer Tooling
+
+RedisFlow includes comprehensive tooling for observing Redis stream traffic during development:
+
+- **Interactive Diagnostics Tool** - Rich console UI for stream inspection
+- **Shell Scripts** - Quick CLI-based inspection (`inspect-stream.sh`, `inspect-pending.sh`, `monitor-stream.sh`)
+- **Redis Commander** - Web UI automatically included with Aspire
+- **Direct Redis CLI Commands** - For advanced troubleshooting
+
+See [docs/Developer-Tooling.md](docs/Developer-Tooling.md) for complete usage guide.
+
+### Quick Start
+
+```bash
+# Start Aspire with Redis
+cd src/RedisFlow/RedisFlow.AppHost
+dotnet run
+
+# In another terminal, run diagnostics tool
+cd src/RedisFlow/RedisFlow.Diagnostics
+dotnet run localhost:6379 mystream
+
+# Or use shell scripts
+./scripts/inspect-stream.sh mystream
+```
 
 ---
 
