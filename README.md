@@ -494,13 +494,18 @@ As documented in [`docs/schemas/CHANGELOG.md`](/docs/schemas/CHANGELOG.md):
 Proto files are compiled to C# during build using `Grpc.Tools`:
 
 ```xml
-<!-- In RedisFlow.Domain.csproj or shared project -->
+<!-- Example: In src/RedisFlow/RedisFlow.Domain/RedisFlow.Domain.csproj -->
 <ItemGroup>
+  <!-- Path calculation: 
+       From: src/RedisFlow/RedisFlow.Domain/
+       To:   docs/schemas/
+       Path: ..\..\..\ (up 3 levels to repo root) + docs\schemas\message.proto
+  -->
   <Protobuf Include="..\..\..\docs\schemas\message.proto" GrpcServices="None" />
 </ItemGroup>
 ```
 
-> **Note**: The path is relative to the project file location. Adjust based on your project structure (e.g., from `src/RedisFlow/RedisFlow.Domain/` to `docs/schemas/`).
+> **Tip**: To calculate the relative path, count the directory levels from your `.csproj` location to the repository root, then append the path to the proto file.
 
 Generated types are **not checked into source control** (regenerated on build).
 
