@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\RedisFlow.Services\RedisFlow.Services.csproj" />
     <ProjectReference Include="..\TestBase\TestBase.csproj" />
   </ItemGroup>
 
