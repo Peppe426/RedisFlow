@@ -70,6 +70,57 @@ If a consumer crashes after reading but before acknowledging:
 2. On restart, the consumer reprocesses the pending message
 3. The message is acknowledged only after successful processing
 
+### Usage Example
+
+#### Producer
+```csharp
+using Microsoft.Extensions.Logging;
+using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Services;
+using StackExchange.Redis;
+
+// Connect to Redis
+var redis = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+
+// Create producer
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+var producer = new RedisStreamProducer(
+    redis,
+    loggerFactory.CreateLogger<RedisStreamProducer>(),
+    streamKey: "messages");
+
+// Produce messages
+await producer.ProduceAsync(
+    new Message("producer-1", "Hello from producer!"),
+    CancellationToken.None);
+```
+
+#### Consumer
+```csharp
+using Microsoft.Extensions.Logging;
+using RedisFlow.Services;
+using StackExchange.Redis;
+
+// Connect to Redis
+var redis = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+
+// Create consumer
+var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+var consumer = new RedisStreamConsumer(
+    redis,
+    loggerFactory.CreateLogger<RedisStreamConsumer>(),
+    consumerGroup: "my-group",
+    consumerName: "consumer-1",
+    streamKey: "messages");
+
+// Consume messages (automatically handles replay on startup)
+await consumer.ConsumeAsync(async (message, ct) =>
+{
+    Console.WriteLine($"Received from {message.Producer}: {message.Content}");
+    // Message is automatically acknowledged after handler completes
+}, cancellationToken);
+```
+
 ### Running Integration Tests
 
 Integration tests demonstrate all replay scenarios:
