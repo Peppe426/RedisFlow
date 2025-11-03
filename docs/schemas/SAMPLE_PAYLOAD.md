@@ -28,21 +28,21 @@ var message = new RedisFlow.Domain.ValueObjects.Message(
 ### Protobuf Binary (Hex)
 
 ```
-0a 09 50 72 6f 64 75 63 65 72 31 12 0d 48 65 6c 6c 6f 2c 20 52 65 64 69 73 21 1a 0c 08 d1 d9 cd b3 06 10 00
+0A 09 50 72 6F 64 75 63 65 72 31 12 0D 48 65 6C 6C 6F 2C 20 52 65 64 69 73 21 1A 06 08 E0 CB A4 C8 06
 ```
 
 **Breakdown:**
-- `0a 09`: Field 1 (producer), length 9 bytes
-- `50 72 6f 64 75 63 65 72 31`: "Producer1" (UTF-8)
-- `12 0d`: Field 2 (content), length 13 bytes
-- `48 65 6c 6c 6f 2c 20 52 65 64 69 73 21`: "Hello, Redis!" (UTF-8)
-- `1a 0c`: Field 3 (created_at), length 12 bytes
-- `08 d1 d9 cd b3 06 10 00`: Timestamp (seconds + nanos)
+- `0A 09`: Field 1 (producer), length 9 bytes
+- `50 72 6F 64 75 63 65 72 31`: "Producer1" (UTF-8)
+- `12 0D`: Field 2 (content), length 13 bytes
+- `48 65 6C 6C 6F 2C 20 52 65 64 69 73 21`: "Hello, Redis!" (UTF-8)
+- `1A 06`: Field 3 (created_at), length 6 bytes
+- `08 E0 CB A4 C8 06`: Timestamp (seconds: 1730674800, nanos: 0)
 
 ### Protobuf Binary (Base64)
 
 ```
-CglQcm9kdWNlcjESDUhlbGxvLCBSZWRpcyEaDAgB0dnNswYQAA==
+CglQcm9kdWNlcjESDUhlbGxvLCBSZWRpcyEaBgjgy6TIBg==
 ```
 
 ## Usage Examples
