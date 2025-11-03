@@ -40,9 +40,11 @@ public class RedisProducer : IProducer
             CreatedAt = Timestamp.FromDateTime(message.CreatedAt.ToUniversalTime())
         };
 
-        // Serialize to byte array using MemoryStream
+        // Serialize to byte array
         using var stream = new MemoryStream();
-        payload.WriteTo(new Google.Protobuf.CodedOutputStream(stream));
+        using var codedOutputStream = new Google.Protobuf.CodedOutputStream(stream, leaveOpen: true);
+        payload.WriteTo(codedOutputStream);
+        codedOutputStream.Flush();
         var serializedData = stream.ToArray();
 
         // Add to Redis Stream with single field containing serialized protobuf
