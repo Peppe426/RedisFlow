@@ -12,19 +12,25 @@ public class RedisStreamConsumer : IConsumer
     private readonly string _streamKey;
     private readonly string _groupName;
     private readonly string _consumerName;
+    private readonly int _claimIdleTimeoutMs;
+    private readonly int _pollingIntervalMs;
 
     public RedisStreamConsumer(
         IConnectionMultiplexer redis,
         ILogger<RedisStreamConsumer> logger,
         string streamKey = "messages",
         string groupName = "default-group",
-        string? consumerName = null)
+        string? consumerName = null,
+        int claimIdleTimeoutMs = 5000,
+        int pollingIntervalMs = 100)
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
         _groupName = groupName ?? throw new ArgumentNullException(nameof(groupName));
         _consumerName = consumerName ?? $"consumer-{Guid.NewGuid():N}";
+        _claimIdleTimeoutMs = claimIdleTimeoutMs;
+        _pollingIntervalMs = pollingIntervalMs;
     }
 
     public async Task ConsumeAsync(
