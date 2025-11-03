@@ -1,0 +1,47 @@
+# Schema Changelog
+
+This document tracks all changes to Protocol Buffer schemas used in RedisFlow.
+
+---
+
+## Guidelines
+
+1. **Never reuse tag numbers** - Reserve numbers for deleted fields
+2. **Avoid `required` fields** - Not supported in proto3
+3. **Avoid changing field types** - Add new fields and deprecate old ones
+4. **Use `snake_case`** for field names
+5. **Document all changes** with date, version, and rationale
+
+---
+
+## Schema Versions
+
+### [Unreleased]
+
+_No schema changes yet. Schemas will be added as producer and consumer implementations are developed._
+
+---
+
+## Example Entry Format
+
+```
+## [v1.1.0] - 2024-01-15
+
+### Changed
+- Added `correlation_id` field to `EventData` message (tag 4)
+- Rationale: Enable distributed tracing across services
+
+### Deprecated
+- `timestamp` field (tag 3) - Use `event_timestamp` instead for clarity
+
+### Breaking Changes
+- None
+```
+
+---
+
+## Notes
+
+- This file should be updated **before** merging any PR that modifies `.proto` files
+- Breaking changes require major version bump and migration guide
+- Use semantic versioning for schema versions
