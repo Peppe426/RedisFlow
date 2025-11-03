@@ -213,16 +213,15 @@ public class RedisStreamIntegrationTests
         var tasks = new List<Task>();
         for (int i = 1; i <= 3; i++)
         {
-            var i1 = i;
+            var messageNumber = i;
             tasks.Add(Task.Run(async () =>
             {
-                await producer1.ProduceAsync(new Message("Producer1", $"P1-Message-{i1}"));
+                await producer1.ProduceAsync(new Message("Producer1", $"P1-Message-{messageNumber}"));
             }));
             
-            var i2 = i;
             tasks.Add(Task.Run(async () =>
             {
-                await producer2.ProduceAsync(new Message("Producer2", $"P2-Message-{i2}"));
+                await producer2.ProduceAsync(new Message("Producer2", $"P2-Message-{messageNumber}"));
             }));
         }
 
