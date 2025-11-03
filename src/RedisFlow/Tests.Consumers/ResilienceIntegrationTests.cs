@@ -37,7 +37,7 @@ public class ResilienceIntegrationTests : UnitTest
     }
 
     [SetUp]
-    public async Task TestSetup()
+    public new async Task TestSetup()
     {
         // Clean stream before each test
         if (_redis != null)
