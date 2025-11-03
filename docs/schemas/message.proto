@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package redisflow;
+
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "RedisFlow.Domain.Proto";
+
+message MessageProto {
+  string producer = 1;
+  string content = 2;
+  google.protobuf.Timestamp created_at = 3;
+}
