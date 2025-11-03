@@ -5,8 +5,8 @@ This document describes how to run the Redis stream integration tests locally.
 ## Prerequisites
 
 - **.NET 9 SDK** installed
-- **Docker** installed and running (required for Aspire to spin up Redis container)
-- **Aspire Workload** installed: `dotnet workload install aspire`
+- **Docker** installed and running (required to spin up Redis container)
+- No additional workloads required
 
 ## Integration Test Project
 
@@ -60,14 +60,14 @@ dotnet test tests/RedisFlow.Integration/ --filter "FullyQualifiedName~Should_Pro
 
 ## How It Works
 
-### Aspire-based Redis Setup
+### Docker-based Redis Setup
 
-The integration tests use **Aspire.Hosting.Testing** to automatically:
+The integration tests use Docker directly to:
 
-1. Spin up a Redis container via Docker
-2. Configure connection strings
+1. Spin up a Redis 7 Alpine container via `docker run`
+2. Map Redis port 6379 to localhost
 3. Provide a `IConnectionMultiplexer` for test use
-4. Clean up resources after tests complete
+4. Clean up the container after tests complete
 
 The Redis instance is shared across all tests in a test class but the stream is cleaned up after each test to ensure isolation.
 
@@ -75,10 +75,10 @@ The Redis instance is shared across all tests in a test class but the stream is 
 
 All integration tests inherit from `RedisIntegrationTestBase` which:
 
-- Sets up Redis via Aspire AppHost (`RedisFlow.AppHost`)
+- Sets up Redis via Docker (`docker run`)
 - Provides a configured `IConnectionMultiplexer` instance
 - Cleans up the test stream after each test
-- Disposes resources after all tests complete
+- Stops and removes the Docker container after all tests complete
 
 ### MessagePack Serialization
 
@@ -104,15 +104,6 @@ The `Message` class in `RedisFlow.Domain.ValueObjects` is annotated with `[Messa
 
 **Solution**: Stop any locally running Redis instances or change the port in the AppHost configuration.
 
-### Aspire Workload Missing
-
-**Error**: `Aspire.Hosting` types not found
-
-**Solution**: Install the Aspire workload:
-```bash
-dotnet workload install aspire
-```
-
 ### Test Timeouts
 
 **Error**: Tests timing out waiting for messages
@@ -127,15 +118,11 @@ dotnet workload install aspire
 To run integration tests in CI:
 
 1. Ensure Docker is available in the CI environment
-2. Install Aspire workload: `dotnet workload install aspire`
-3. Run tests: `dotnet test tests/RedisFlow.Integration/`
+2. Run tests: `dotnet test tests/RedisFlow.Integration/`
 
 Example GitHub Actions workflow:
 
 ```yaml
-- name: Setup Aspire
-  run: dotnet workload install aspire
-
 - name: Run Integration Tests
   run: dotnet test tests/RedisFlow.Integration/ --logger "trx;LogFileName=test-results.trx"
 ```

@@ -35,13 +35,13 @@ public class RedisStreamIntegrationTests : RedisIntegrationTestBase
         
         Message? receivedMessage = null;
         var messageReceived = new TaskCompletionSource<bool>();
+        var consumerReady = new TaskCompletionSource<bool>();
 
-        // When
-        await producer.ProduceAsync(expectedMessage);
-
+        // Start consumer first
         var consumeTask = Task.Run(async () =>
         {
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            consumerReady.SetResult(true);
             await consumer.ConsumeAsync(async (msg, ct) =>
             {
                 receivedMessage = msg;
@@ -51,7 +51,14 @@ public class RedisStreamIntegrationTests : RedisIntegrationTestBase
             }, cts.Token);
         });
 
-        await Task.WhenAny(messageReceived.Task, Task.Delay(TimeSpan.FromSeconds(6)));
+        // Wait for consumer to be ready
+        await consumerReady.Task;
+        await Task.Delay(500); // Give consumer time to subscribe
+
+        // When - produce message after consumer is ready
+        await producer.ProduceAsync(expectedMessage);
+
+        await Task.WhenAny(messageReceived.Task, Task.Delay(TimeSpan.FromSeconds(8)));
 
         // Then
         receivedMessage.Should().NotBeNull("because the consumer should receive the message");

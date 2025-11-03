@@ -9,8 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.2" />
-    <PackageReference Include="Aspire.Hosting.Testing" Version="9.5.2" />
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
     <PackageReference Include="MessagePack" Version="2.5.192" />
@@ -24,7 +22,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\RedisFlow\RedisFlow.Domain\RedisFlow.Domain.csproj" />
     <ProjectReference Include="..\..\src\RedisFlow\RedisFlow.Services\RedisFlow.Services.csproj" />
-    <ProjectReference Include="..\..\src\RedisFlow\RedisFlow.AppHost\RedisFlow.AppHost.csproj" />
   </ItemGroup>
 
   <ItemGroup>

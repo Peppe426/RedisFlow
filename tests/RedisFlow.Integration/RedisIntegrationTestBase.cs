@@ -1,5 +1,4 @@
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
+using System.Diagnostics;
 using StackExchange.Redis;
 
 namespace RedisFlow.Integration;
@@ -9,8 +8,9 @@ namespace RedisFlow.Integration;
 [Parallelizable(ParallelScope.None)]
 public abstract class RedisIntegrationTestBase : IAsyncDisposable
 {
-    private DistributedApplication? _app;
+    private Process? _redisProcess;
     private IConnectionMultiplexer? _redis;
+    private const int RedisPort = 6379;
     protected const string StreamKey = "test-messages";
 
     protected IConnectionMultiplexer Redis => _redis ?? throw new InvalidOperationException("Redis not initialized");
@@ -18,21 +18,21 @@ public abstract class RedisIntegrationTestBase : IAsyncDisposable
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        // Create the Aspire app host builder
-        var appHost = await DistributedApplicationTestingBuilder.CreateAsync<Projects.RedisFlow_AppHost>();
-        
-        _app = await appHost.BuildAsync();
-        await _app.StartAsync();
+        // Start Redis container using Docker
+        await StartRedisContainerAsync();
 
-        // Get the Redis connection string from the app
-        var connectionString = await _app.GetConnectionStringAsync("redis");
-        
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Redis connection string is null or empty. Ensure Redis is added in AppHost.");
-        }
+        // Wait a bit for Redis to start
+        await Task.Delay(2000);
 
+        // Connect to Redis
+        var connectionString = $"localhost:{RedisPort},abortConnect=false";
         _redis = await ConnectionMultiplexer.ConnectAsync(connectionString);
+
+        // Verify connection
+        if (!_redis.IsConnected)
+        {
+            throw new InvalidOperationException("Failed to connect to Redis. Ensure Docker is running.");
+        }
     }
 
     [OneTimeTearDown]
@@ -52,6 +52,102 @@ public abstract class RedisIntegrationTestBase : IAsyncDisposable
         }
     }
 
+    private async Task StartRedisContainerAsync()
+    {
+        // Check if container already exists and remove it
+        var checkProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = "ps -a --filter name=redisflow-test --format {{.ID}}",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+        checkProcess.Start();
+        var containerId = await checkProcess.StandardOutput.ReadToEndAsync();
+        await checkProcess.WaitForExitAsync();
+
+        if (!string.IsNullOrWhiteSpace(containerId))
+        {
+            // Remove existing container
+            var removeProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = $"rm -f {containerId.Trim()}",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            removeProcess.Start();
+            await removeProcess.WaitForExitAsync();
+        }
+
+        // Start new Redis container
+        _redisProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = $"run --name redisflow-test -p {RedisPort}:6379 -d redis:7-alpine",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        _redisProcess.Start();
+        await _redisProcess.WaitForExitAsync();
+
+        if (_redisProcess.ExitCode != 0)
+        {
+            var error = await _redisProcess.StandardError.ReadToEndAsync();
+            throw new InvalidOperationException($"Failed to start Redis container: {error}");
+        }
+    }
+
+    private async Task StopRedisContainerAsync()
+    {
+        if (_redisProcess == null)
+            return;
+
+        var stopProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = "stop redisflow-test",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        stopProcess.Start();
+        await stopProcess.WaitForExitAsync();
+
+        var removeProcess = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = "rm redisflow-test",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        removeProcess.Start();
+        await removeProcess.WaitForExitAsync();
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_redis != null)
@@ -61,12 +157,10 @@ public abstract class RedisIntegrationTestBase : IAsyncDisposable
             _redis = null;
         }
 
-        if (_app != null)
-        {
-            await _app.StopAsync();
-            await _app.DisposeAsync();
-            _app = null;
-        }
+        await StopRedisContainerAsync();
+
+        _redisProcess?.Dispose();
+        _redisProcess = null;
 
         GC.SuppressFinalize(this);
     }
