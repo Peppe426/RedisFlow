@@ -535,7 +535,7 @@ foreach (var entry in entries)
 
 - **Issues**: See [GitHub Issues](https://github.com/Peppe426/RedisFlow/issues) for detailed requirements
   - [#1 - Set up Aspire host and Redis infrastructure](https://github.com/Peppe426/RedisFlow/issues/1)
-  - [#2 - Implement MessagePack-based producers](https://github.com/Peppe426/RedisFlow/issues/2)
+  - [#2 - Implement producers](https://github.com/Peppe426/RedisFlow/issues/2) *(Note: Updated to use Protocol Buffers instead of MessagePack per project standards)*
   - [#3 - Implement consumer group processing](https://github.com/Peppe426/RedisFlow/issues/3)
   - [#4 - Demonstrate message persistence](https://github.com/Peppe426/RedisFlow/issues/4)
   - [#5 - Validate resilience scenarios](https://github.com/Peppe426/RedisFlow/issues/5)
