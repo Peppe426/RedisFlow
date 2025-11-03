@@ -1,7 +1,10 @@
 <Solution>
   <Folder Name="/Tests/">
     <Project Path="TestBase/TestBase.csproj" />
+    <Project Path="Tests.Consumers/Tests.Consumers.csproj" />
+    <Project Path="Tests.Producer/Tests.Producer.csproj" />
   </Folder>
   <Project Path="RedisFlow.AppHost/RedisFlow.AppHost.csproj" />
   <Project Path="RedisFlow.ServiceDefaults/RedisFlow.ServiceDefaults.csproj" />
+  <Project Path="RedisFlow.Services/RedisFlow.Services.csproj" />
 </Solution>
