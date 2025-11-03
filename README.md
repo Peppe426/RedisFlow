@@ -28,6 +28,8 @@ RedisFlow demonstrates a production-ready Redis stream implementation with:
 - **Resilience Patterns**: Message persistence, replay, and failure handling
 - **Integration Testing**: Aspire-hosted Redis for automated testing
 
+> **📝 Note on Serialization**: This project uses **Protocol Buffers** (protobuf) for message serialization per project standards, ensuring schema evolution support and type safety. While some GitHub issues reference MessagePack, the implementation follows the protobuf approach as documented in [`.github/copilot-instructions.md`](/.github/copilot-instructions.md).
+
 ### Components
 
 - **Redis Server**: Managed by Aspire via Docker; provides stream and consumer group capabilities
@@ -56,10 +58,7 @@ RedisFlow demonstrates a production-ready Redis stream implementation with:
    dotnet workload install aspire
    ```
    
-4. **Aspire Tooling** (optional, for dashboard)
-   ```bash
-   dotnet tool install -g Microsoft.NET.Sdk.Aspire.Manifest
-   ```
+   > The Aspire workload includes all necessary tooling and dashboard components.
 
 ### Verification
 
@@ -495,10 +494,13 @@ As documented in [`docs/schemas/CHANGELOG.md`](/docs/schemas/CHANGELOG.md):
 Proto files are compiled to C# during build using `Grpc.Tools`:
 
 ```xml
+<!-- In RedisFlow.Domain.csproj or shared project -->
 <ItemGroup>
-  <Protobuf Include="..\..\docs\schemas\message.proto" GrpcServices="None" />
+  <Protobuf Include="..\..\..\docs\schemas\message.proto" GrpcServices="None" />
 </ItemGroup>
 ```
+
+> **Note**: The path is relative to the project file location. Adjust based on your project structure (e.g., from `src/RedisFlow/RedisFlow.Domain/` to `docs/schemas/`).
 
 Generated types are **not checked into source control** (regenerated on build).
 
@@ -535,7 +537,7 @@ foreach (var entry in entries)
 
 - **Issues**: See [GitHub Issues](https://github.com/Peppe426/RedisFlow/issues) for detailed requirements
   - [#1 - Set up Aspire host and Redis infrastructure](https://github.com/Peppe426/RedisFlow/issues/1)
-  - [#2 - Implement producers](https://github.com/Peppe426/RedisFlow/issues/2) *(Note: Updated to use Protocol Buffers instead of MessagePack per project standards)*
+  - [#2 - Implement producers](https://github.com/Peppe426/RedisFlow/issues/2)
   - [#3 - Implement consumer group processing](https://github.com/Peppe426/RedisFlow/issues/3)
   - [#4 - Demonstrate message persistence](https://github.com/Peppe426/RedisFlow/issues/4)
   - [#5 - Validate resilience scenarios](https://github.com/Peppe426/RedisFlow/issues/5)
