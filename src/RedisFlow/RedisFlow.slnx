@@ -6,6 +6,7 @@
   </Folder>
   <Project Path="../../tests/RedisFlow.Integration/RedisFlow.Integration.csproj" />
   <Project Path="RedisFlow.AppHost/RedisFlow.AppHost.csproj" />
+  <Project Path="RedisFlow.Diagnostics/RedisFlow.Diagnostics.csproj" />
   <Project Path="RedisFlow.Domain/RedisFlow.Domain.csproj" />
   <Project Path="RedisFlow.Producer1/RedisFlow.Producer1.csproj" />
   <Project Path="RedisFlow.Producer2/RedisFlow.Producer2.csproj" />
