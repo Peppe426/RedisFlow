@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option csharp_namespace = "RedisFlow.Contracts";
+
+import "google/protobuf/timestamp.proto";
+
+// Message payload for Redis Stream
+message MessagePayload {
+  // Producer identifier
+  string producer = 1;
+  
+  // Message content
+  string content = 2;
+  
+  // Timestamp when the message was created
+  google.protobuf.Timestamp created_at = 3;
+}
