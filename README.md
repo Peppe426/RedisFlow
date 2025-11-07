@@ -1,567 +1,447 @@
-# RedisFlow POC
+# RedisFlow
 
-A proof-of-concept for Redis stream processing using .NET 9 and .NET Aspire, demonstrating message persistence, consumer groups, and resilience patterns.
+A .NET 9 demonstration project showcasing Redis Streams with producer/consumer patterns, resilience testing, and message persistence using Protocol Buffers.
 
----
+# RedisFlow
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Running the POC](#running-the-poc)
-- [Resilience Scenarios](#resilience-scenarios)
-- [Integration Tests](#integration-tests)
-- [Development Tips](#development-tips)
-- [Serialization Strategy](#serialization-strategy)
+A .NET 9 demonstration project showcasing Redis Streams with Protocol Buffers serialization, using .NET Aspire for orchestration.
 
 ---
 
-## 🎯 Overview
-
-RedisFlow demonstrates a production-ready Redis stream implementation with:
-
-- **Redis Streams**: Event streaming with consumer groups
-- **Aspire Orchestration**: Container management and service discovery
-- **Protocol Buffers**: Efficient binary serialization for stream messages
-- **Resilience Patterns**: Message persistence, replay, and failure handling
-- **Integration Testing**: Aspire-hosted Redis for automated testing
-
-> **📝 Note on Serialization**: This project uses **Protocol Buffers** (protobuf) for message serialization per project standards, ensuring schema evolution support and type safety. While some GitHub issues reference MessagePack, the implementation follows the protobuf approach as documented in [`.github/copilot-instructions.md`](/.github/copilot-instructions.md).
-
-### Components
-
-- **Redis Server**: Managed by Aspire via Docker; provides stream and consumer group capabilities
-- **Producers**: Console applications that publish serialized messages to Redis streams
-- **Consumer**: Console application using consumer groups for parallel message processing
-- **Shared Contracts**: Common interfaces and domain models in `RedisFlow.Domain`
-- **Integration Tests**: Automated tests verifying produce/consume/replay flows
+## ⚙️ Components
+- **Redis Server:** Hosted via .NET Aspire; provides stream and consumer group capabilities.
+- **Producers:** .NET implementations pushing serialized messages to Redis Streams.
+- **Consumer:** .NET consumer reading from the stream using consumer groups with automatic pending message recovery.
+- **Producers:** Two separate .NET console apps pushing serialized messages to the stream.
+  - `RedisFlow.Producer1`: Sends messages every 2 seconds
+  - `RedisFlow.Producer2`: Sends messages every 3 seconds
+- **Consumer:** A .NET console app reading from the stream using a consumer group *(coming soon)*.
 
 ---
 
-## ✅ Prerequisites
+## 🚀 Getting Started with Aspire
 
-### Required Software
+### Prerequisites
+- .NET 9 SDK
+- Docker Desktop (for running Redis container)
+- Visual Studio 2022 17.9+ or JetBrains Rider 2024.1+ (recommended for Aspire dashboard)
 
-1. **.NET 9 SDK** or later
+### Running the Application
+
+1. **Start the Aspire AppHost:**
    ```bash
-   dotnet --version  # Should be 9.0.x or later
+   cd src/RedisFlow/RedisFlow.AppHost
+   dotnet run
    ```
 
-2. **Docker Desktop** (for Aspire Redis container)
-   - [Download Docker Desktop](https://www.docker.com/products/docker-desktop)
-   - Ensure Docker daemon is running before starting the AppHost
+   This will:
+   - Spin up a Redis container locally via Docker
+   - Start the Aspire Dashboard (typically at `http://localhost:15888`)
+   - Expose Redis connection information to other projects
 
-3. **.NET Aspire Workload**
-   ```bash
-   dotnet workload install aspire
-   ```
-   
-   > The Aspire workload includes all necessary tooling and dashboard components.
+2. **Access the Aspire Dashboard:**
+   - Open your browser to the URL shown in the console (usually `http://localhost:15888`)
+   - View logs, traces, and metrics for all resources
+   - Monitor Redis container health and connection status
 
-### Verification
+3. **Stop the Aspire Host:**
+   - Press `Ctrl+C` in the terminal where AppHost is running
+   - Redis container will be stopped automatically
 
-```bash
-# Verify .NET version
-dotnet --version
+### Connection Information
 
-# Verify Docker is running
-docker ps
-
-# Verify Aspire workload
-dotnet workload list | grep aspire
-```
+The Redis connection string is automatically discoverable by producers and consumers through Aspire's service discovery:
+- Resource name: `redis`
+- Connection string format: `localhost:{dynamicPort}`
 
 ---
 
-## 📁 Project Structure
-
-The repository follows these conventions:
-
-```
-/src/RedisFlow/
-├── RedisFlow.AppHost/          # Aspire orchestration host
-│   └── AppHost.cs              # Configures Redis and application services
-├── RedisFlow.ServiceDefaults/  # Shared Aspire service configurations
-├── RedisFlow.Domain/           # Shared domain models and value objects
-│   └── ValueObjects/Message.cs # Core message contract
-├── RedisFlow.Services/         # Service contracts and implementations
-│   └── Contracts/
-│       ├── IProducer.cs        # Producer interface
-│       └── IConsumer.cs        # Consumer interface
-├── Tests.Producer/             # Producer test/demo applications
-├── Tests.Consumers/            # Consumer test/demo applications
-└── TestBase/                   # Shared test infrastructure
-
-/tests/                          # (Future) Integration test projects
-└── RedisFlow.Integration/      # Integration tests using Aspire Redis
-
-/docs/
-├── schemas/                    # Protocol buffer schemas (.proto files)
-│   └── CHANGELOG.md           # Schema evolution tracking
-└── Test structure.md          # Testing conventions and patterns
-```
-
-### Key Conventions
-
-- **Producers and consumers**: Console applications under `src/` for demonstration
-- **Shared contracts**: Interfaces in `RedisFlow.Services.Contracts`
-- **Domain models**: Immutable value objects in `RedisFlow.Domain`
-- **Integration tests**: Tests in `/tests/` directory using NUnit + FluentAssertions
-- **Protocol Buffers**: Schema files in `/docs/schemas/` with version tracking
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone and Build
-
-```bash
-git clone https://github.com/Peppe426/RedisFlow.git
-cd RedisFlow
-
-# Build all projects
-cd src/RedisFlow/RedisFlow.AppHost
-dotnet build
-```
-
-### 2. Configure the AppHost
-
-The `RedisFlow.AppHost` project orchestrates all services. To add Redis support:
-
-```csharp
-// src/RedisFlow/RedisFlow.AppHost/AppHost.cs
-var builder = DistributedApplication.CreateBuilder(args);
-
-// Add Redis container
-var redis = builder.AddRedis("redis")
-    .WithRedisCommander();  // Optional: adds Redis Commander UI
-
-// Add producer projects (when implemented)
-builder.AddProject<Projects.Tests_Producer>("producer1")
-    .WithReference(redis);
-
-builder.AddProject<Projects.Tests_Producer>("producer2")
-    .WithReference(redis);
-
-// Add consumer project (when implemented)
-builder.AddProject<Projects.Tests_Consumers>("consumer")
-    .WithReference(redis);
-
-builder.Build().Run();
-```
-
-### 3. Run the AppHost
-
-```bash
-cd src/RedisFlow/RedisFlow.AppHost
-dotnet run
-```
-
-This will:
-- Start the Aspire dashboard (typically at `http://localhost:15888`)
-- Launch a Redis container via Docker
-- Start configured producer and consumer applications
-- Provide service discovery and connection string management
-
-### 4. Access the Aspire Dashboard
-
-Open your browser to the URL shown in the console (e.g., `http://localhost:15888`). The dashboard provides:
-- Real-time service status
-- Log aggregation from all services
-- Redis connection information
-- Container health monitoring
-
----
-
-## 🎮 Running the POC
-
-### Starting Producers
-
-Producers implement the `IProducer` interface and publish messages to a Redis stream:
-
-```bash
-# Run producer manually (when implemented)
-cd src/RedisFlow/Tests.Producer
-dotnet run
-
-# Or let Aspire manage it via AppHost
-cd src/RedisFlow/RedisFlow.AppHost
-dotnet run
-```
-
-**Expected behavior**:
-- Producers serialize messages using Protocol Buffers
-- Messages are appended to the configured Redis stream
-- Each message includes: producer ID, content, timestamp
-- Stream IDs are logged for diagnostics
-
-### Starting the Consumer
-
-The consumer implements `IConsumer` and processes messages using consumer groups:
-
-```bash
-# Run consumer manually (when implemented)
-cd src/RedisFlow/Tests.Consumers
-dotnet run
-
-# Or let Aspire manage it
-cd src/RedisFlow/RedisFlow.AppHost
-dotnet run
-```
-
-**Expected behavior**:
-- Consumer joins a Redis consumer group
-- Processes pending messages (unacknowledged) first
-- Acknowledges messages after successful handling
-- Supports graceful shutdown with cancellation
-
-### Message Flow
-
-1. **Producers** → Serialize `Message` using protobuf → `XADD` to Redis stream
-2. **Redis Stream** → Stores messages persistently with unique IDs
-3. **Consumer Group** → Distributes messages across consumers
-4. **Consumer** → `XREADGROUP` → Deserialize → Process → `XACK`
-
----
-
-## 💪 Resilience Scenarios
-
-The POC demonstrates several resilience patterns:
-
-### Scenario 1: Producer Goes Offline
-
-**Steps**:
-1. Start both producers and consumer via AppHost
-2. Stop one producer (Ctrl+C or via Aspire dashboard)
-3. Observe the remaining producer continues publishing
-4. Verify consumer processes messages from the active producer
-
-**Expected outcome**:
-- Stream continues accepting messages from active producer
-- Consumer processes all available messages
-- No message loss or duplication
-
-### Scenario 2: Consumer Restart with Pending Messages
-
-**Steps**:
-1. Start producers and consumer
-2. Stop the consumer while producers are running
-3. Producers continue writing to the stream
-4. Restart the consumer
-
-**Expected outcome**:
-- Messages written during consumer downtime remain in the stream
-- Consumer processes pending messages from the Pending Entries List (PEL)
-- All messages are eventually acknowledged
-- Stream IDs show no gaps in processing
-
-**Verification**:
-```bash
-# Connect to Redis via CLI
-docker exec -it <redis-container-id> redis-cli
-
-# Check stream length
-XLEN mystream
-
-# Check pending messages
-XPENDING mystream mygroup
-
-# Inspect consumer group info
-XINFO GROUPS mystream
-```
-
-### Scenario 3: Message Persistence Across Restarts
-
-**Steps**:
-1. Produce messages to the stream
-2. Stop all producers and consumers
-3. Stop the AppHost (stops Redis container)
-4. Restart AppHost and consumer
-
-**Expected outcome**:
-- Redis stream data is persisted (if configured with volume mounting)
-- Consumer reprocesses any messages not previously acknowledged
-- Message replay demonstrates durability
-
----
-
-## 🧪 Integration Tests
-
-Integration tests verify the full produce/consume/replay workflow using an Aspire-hosted Redis instance.
-
-### Running Integration Tests
-
-```bash
-# Navigate to integration test project (when implemented)
-cd tests/RedisFlow.Integration
-
-# Run all integration tests
-dotnet test
-
-# Run with detailed output
-dotnet test --logger "console;verbosity=detailed"
-
-# Run specific test category
-dotnet test --filter Category="Redis"
-```
-
-### Test Structure
-
-Integration tests follow the conventions in [`docs/Test structure.md`](/docs/Test%20structure.md):
-
-```csharp
-[TestFixture]
-[Category("Integration")]
-public class RedisStreamIntegrationTests
-{
-    [Test]
-    public async Task Should_ConsumeMessage_When_ProducerPublishes()
-    {
-        // Given
-        var producer = CreateProducer();
-        var consumer = CreateConsumer();
-        var message = new Message("producer1", "test content");
-
-        // When
-        await producer.ProduceAsync(message);
-        var consumed = await consumer.ConsumeNextAsync();
-
-        // Then
-        consumed.Should().NotBeNull();
-        consumed.Content.Should().Be("test content");
-    }
-}
-```
-
-### Test Coverage
-
-Integration tests should verify:
-- ✅ Producer serializes and publishes messages
-- ✅ Consumer deserializes and processes messages
-- ✅ Consumer group acknowledgment works correctly
-- ✅ Pending messages are replayed on consumer restart
-- ✅ Multiple consumers distribute load correctly
-- ✅ Message ordering within a stream is preserved
-
-### Setting Up Test Redis
-
-Tests use Aspire to provision a Redis instance:
-
-```csharp
-// Example test base class
-public class RedisIntegrationTestBase
-{
-    protected IDistributedApplicationTestingBuilder Builder { get; private set; }
-    
-    [OneTimeSetUp]
-    public async Task OneTimeSetup()
-    {
-        Builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.RedisFlow_AppHost>();
-        await Builder.StartAsync();
-    }
-    
-    [OneTimeTearDown]
-    public async Task OneTimeTeardown()
-    {
-        await Builder.DisposeAsync();
-    }
-}
-```
-
----
-
-## 🛠️ Development Tips
-
-### Inspecting Redis Streams
-
-**Using Redis CLI**:
-```bash
-# Get Redis container ID
-docker ps | grep redis
-
-# Connect to Redis CLI
-docker exec -it <container-id> redis-cli
-
-# List all streams
-SCAN 0 MATCH * TYPE stream
-
-# Read stream contents
-XRANGE mystream - +
-
-# Check stream info
-XINFO STREAM mystream
-
-# Monitor live commands
-MONITOR
-```
-
-**Using Redis Commander** (if configured in AppHost):
-- Access via browser: `http://localhost:8081`
-- Visual interface for exploring keys, streams, and consumer groups
-
-### Viewing Consumer Groups
-
-```bash
-# List consumer groups for a stream
-XINFO GROUPS mystream
-
-# List consumers in a group
-XINFO CONSUMERS mystream mygroup
-
-# Check pending messages
-XPENDING mystream mygroup - + 10
-```
-
-### Diagnostics and Logging
-
-**Enable detailed logging** in `appsettings.Development.json`:
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Debug",
-      "RedisFlow": "Trace",
-      "StackExchange.Redis": "Debug"
-    }
-  }
-}
-```
-
-**Stream ID tracking**: Producers should log the Redis-assigned stream ID for each message:
-```csharp
-var streamId = await redis.StreamAddAsync("mystream", entries);
-logger.LogInformation("Message published with ID: {StreamId}", streamId);
-```
-
-### Troubleshooting
-
-**Issue**: AppHost fails to start Redis container
-- **Solution**: Ensure Docker Desktop is running: `docker ps`
-
-**Issue**: Cannot connect to Redis from producer/consumer
-- **Solution**: Check connection string in Aspire dashboard; ensure service references are configured
-
-**Issue**: Messages not being consumed
-- **Solution**: Verify consumer group exists: `XINFO GROUPS mystream` in Redis CLI
-
-**Issue**: Pending messages accumulate
-- **Solution**: Check consumer acknowledgment logic; ensure `XACK` is called after processing
+## 🧩 Technical Objectives
+1. Set up Redis server via .NET Aspire AppHost.
+2. Publish messages to a Redis stream using Protocol Buffers (protobuf) binary format.
+1. Set up a Redis server using .NET Aspire orchestration.
+2. Publish messages to a Redis stream using Protocol Buffers binary serialization.
+3. Consume and acknowledge messages using consumer groups.
+4. Demonstrate message persistence and replay behavior.
+5. Validate system resilience when:
+   - One producer goes offline.
+   - The consumer restarts (confirm pending messages are reprocessed).
 
 ---
 
 ## 🔄 Serialization Strategy
 
-### Protocol Buffers (Protobuf)
+This project uses **Protocol Buffers (protobuf)** for message serialization to ensure:
+- Type safety with versioned schemas
+- High performance and low overhead
+- Schema evolution support
+- Cross-platform compatibility
 
-RedisFlow uses **Protocol Buffers** for message serialization to ensure:
-- **Efficiency**: Compact binary format with minimal overhead
-- **Schema Evolution**: Forward/backward compatibility with versioned schemas
-- **Type Safety**: Strongly-typed contracts shared across producers and consumers
-- **No JSON**: Avoids JSON serialization for stream payloads (JSON is only for admin tools)
+### Message Schema
 
-### Schema Definition
-
-Proto schemas are stored in [`docs/schemas/`](/docs/schemas/) and tracked for changes:
+Messages are defined in `docs/schemas/message.proto`:
 
 ```protobuf
-// docs/schemas/message.proto
 syntax = "proto3";
 
 package redisflow;
 
 import "google/protobuf/timestamp.proto";
 
-message Message {
+option csharp_namespace = "RedisFlow.Domain.Proto";
+
+message MessageProto {
   string producer = 1;
   string content = 2;
   google.protobuf.Timestamp created_at = 3;
 }
 ```
 
-### Schema Evolution Rules
+All schema changes are documented in `docs/schemas/CHANGELOG.md`.
 
-As documented in [`docs/schemas/CHANGELOG.md`](/docs/schemas/CHANGELOG.md):
-- ❌ **Never reuse tag numbers** (reserve deleted fields)
-- ❌ **Never change field types** (add new fields instead)
-- ✅ **Use `reserved` for deleted fields**
-- ✅ **Add new optional fields** for backward compatibility
-- ✅ **Document all schema changes** in CHANGELOG
+---
 
-### Code Generation
+## 🏗️ Project Structure
 
-Proto files are compiled to C# during build using `Grpc.Tools`:
+```
+src/RedisFlow/
+├── RedisFlow.AppHost/          # Aspire AppHost for orchestrating Redis
+├── RedisFlow.Domain/            # Domain models and protobuf schemas
+├── RedisFlow.Services/          # Producer and Consumer implementations
+│   ├── RedisProducer.cs        # Redis Streams producer
+│   └── RedisConsumer.cs        # Redis Streams consumer with PEL support
+├── RedisFlow.ServiceDefaults/  # Aspire service defaults
+├── TestBase/                    # Base classes for testing
+├── Tests.Consumers/            # Consumer integration tests
+│   └── ResilienceIntegrationTests.cs  # Resilience scenario tests
+└── Tests.Producer/             # Producer tests (placeholder)
 
-```xml
-<!-- Example: In src/RedisFlow/RedisFlow.Domain/RedisFlow.Domain.csproj -->
-<ItemGroup>
-  <!-- Path calculation: 
-       From: src/RedisFlow/RedisFlow.Domain/
-       To:   docs/schemas/
-       Path: ..\..\..\ (up 3 levels to repo root) + docs\schemas\message.proto
-  -->
-  <Protobuf Include="..\..\..\docs\schemas\message.proto" GrpcServices="None" />
-</ItemGroup>
+docs/schemas/                    # Protobuf schema definitions
 ```
 
-> **Tip**: To calculate the relative path, count the directory levels from your `.csproj` location to the repository root, then append the path to the proto file.
+---
 
-Generated types are **not checked into source control** (regenerated on build).
+## 🚀 Getting Started
 
-### Example Usage
+### Prerequisites
+
+- .NET 9 SDK
+- Docker Desktop (for Aspire Redis container)
+- .NET Aspire workload: `dotnet workload install aspire`
+
+### Running with Aspire
+
+1. **Start the AppHost** (which launches Redis):
+   ```bash
+   cd src/RedisFlow/RedisFlow.AppHost
+   dotnet run
+   ```
+
+2. **Access the Aspire Dashboard** at `http://localhost:15000` to monitor resources.
+
+---
+
+## 🧪 Resilience Testing
+
+### Automated Integration Tests
+
+The project includes comprehensive integration tests in `Tests.Consumers/ResilienceIntegrationTests.cs` that validate:
+
+1. **One Producer Offline Scenario**
+   - Multiple producers send messages
+   - One producer stops sending
+   - Verify the system continues processing remaining producer messages
+
+2. **Consumer Restart with Pending Messages**
+   - Consumer processes some messages then crashes
+   - Consumer restarts with same identity
+   - Verify pending messages are reprocessed via XPENDING/XCLAIM
+
+3. **Combined Resilience Scenario**
+   - Producer offline + consumer restart
+   - Verify full system recovery
+
+4. **Consumer Group Failover**
+   - Different consumer joins the same group
+   - Verify pending messages are claimed and processed
+
+### Running Resilience Tests
+
+**Prerequisites:** Start Redis container first via Aspire AppHost or standalone Docker:
+
+```bash
+# Option 1: Via Aspire (recommended)
+cd src/RedisFlow/RedisFlow.AppHost
+dotnet run
+
+# Option 2: Standalone Redis Docker
+docker run -d -p 6379:6379 redis:latest
+```
+
+**Run the tests:**
+
+```bash
+cd src/RedisFlow
+dotnet test Tests.Consumers --filter "Category=Integration test"
+```
+
+### Manual Resilience Validation
+
+You can manually validate resilience scenarios using the implemented services:
+
+**Scenario 1: One Producer Offline**
 
 ```csharp
-// Producer
-var message = new Message
-{
-    Producer = "producer1",
-    Content = "Hello, Redis!",
-    CreatedAt = Timestamp.FromDateTime(DateTime.UtcNow)
-};
+var redis = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+var producer1 = new RedisProducer(redis, "my-stream");
+var producer2 = new RedisProducer(redis, "my-stream");
 
-byte[] payload = message.ToByteArray();
-await redis.StreamAddAsync("mystream", "data", payload);
+// Both producers send messages
+await producer1.ProduceAsync(new Message("P1", "Message1"));
+await producer2.ProduceAsync(new Message("P2", "Message2"));
 
-// Consumer
-var entries = await redis.StreamReadGroupAsync("mystream", "mygroup", "consumer1");
-foreach (var entry in entries)
-{
-    var payload = entry.Values.First(v => v.Name == "data").Value;
-    var message = Message.Parser.ParseFrom((byte[])payload);
-    
+// Producer 1 stops (simulated offline)
+// Producer 2 continues
+await producer2.ProduceAsync(new Message("P2", "Message3"));
+
+// Verify consumer still processes all messages
+```
+
+**Scenario 2: Consumer Restart**
+
+```csharp
+var consumer = new RedisConsumer(redis, "my-stream", "my-group", "consumer1");
+
+// Consumer processes messages then crashes (CancellationToken cancelled)
+await consumer.ConsumeAsync(async (msg, ct) => {
     // Process message...
-    
-    await redis.StreamAcknowledgeAsync("mystream", "mygroup", entry.Id);
+}, cts.Token);
+
+// Restart consumer with same identity
+var consumerRestarted = new RedisConsumer(redis, "my-stream", "my-group", "consumer1");
+// Pending messages automatically recovered via ProcessPendingMessagesAsync
+await consumerRestarted.ConsumeAsync(handler, newCts.Token);
+```
+
+---
+
+## 📊 Observability & Diagnostics
+
+### Stream Inspection
+
+Check stream status using Redis CLI or via code:
+
+```csharp
+var db = redis.GetDatabase();
+
+// Get stream length
+var streamInfo = await db.StreamInfoAsync("my-stream");
+Console.WriteLine($"Stream length: {streamInfo.Length}");
+
+// Check pending messages
+var pendingInfo = await db.StreamPendingAsync("my-stream", "my-group");
+Console.WriteLine($"Pending messages: {pendingInfo.PendingMessageCount}");
+
+// Get consumer group details
+var groups = await db.StreamGroupInfoAsync("my-stream");
+foreach (var group in groups)
+{
+    Console.WriteLine($"Group: {group.Name}, Pending: {group.PendingMessageCount}");
+}
+```
+
+### Logging Best Practices
+
+Enable structured logging in your producer/consumer implementations:
+
+```csharp
+_logger.LogInformation("Message produced to stream {StreamName} with ID {MessageId}", 
+    streamName, messageId);
+
+_logger.LogWarning("Processing pending message {MessageId} after consumer restart", 
+    messageId);
+```
+
+### Metrics to Monitor
+
+- **Stream length**: Total messages in stream
+- **Pending messages count**: Unacknowledged messages per consumer group
+- **Consumer lag**: Time since last message processing
+- **Message production rate**: Messages/second per producer
+- **Acknowledgment rate**: Messages acknowledged/second
+
+---
+
+## 🔧 Troubleshooting
+
+### Redis Connection Issues
+
+**Problem:** Cannot connect to Redis at `localhost:6379`
+
+**Solutions:**
+- Verify Redis is running: `docker ps | grep redis`
+- Check Aspire Dashboard for Redis resource status
+- Verify port 6379 is not in use by another service
+- Ensure Docker Desktop is running
+
+### Consumer Not Processing Messages
+
+**Problem:** Consumer starts but doesn't receive messages
+
+**Solutions:**
+1. Check if consumer group exists:
+   ```bash
+   redis-cli XINFO GROUPS my-stream
+   ```
+2. Verify messages are in stream:
+   ```bash
+   redis-cli XLEN my-stream
+   ```
+3. Check for pending messages:
+   ```bash
+   redis-cli XPENDING my-stream my-group
+   ```
+4. Review consumer logs for exceptions
+
+### Pending Messages Not Recovered
+
+**Problem:** Messages remain pending after consumer restart
+
+**Solutions:**
+- Consumer must use the **same consumer name** to claim its own pending messages
+- Check `XPENDING` output to verify messages are assigned to your consumer
+- Ensure `ProcessPendingMessagesAsync` is called during consumer startup
+- Use `XCLAIM` manually if automatic recovery fails:
+  ```bash
+  redis-cli XCLAIM my-stream my-group consumer1 0 message-id
+  ```
+
+### Protobuf Serialization Errors
+
+**Problem:** `InvalidProtocolBufferException` when consuming messages
+
+**Solutions:**
+- Ensure producer and consumer use the same schema version
+- Check `docs/schemas/CHANGELOG.md` for breaking changes
+- Verify generated C# code is up-to-date: `dotnet build RedisFlow.Domain`
+- Never reuse protobuf field tag numbers
+
+---
+
+## 🔐 Best Practices
+
+### Producer Resilience
+- Implement retry logic with exponential backoff
+- Log all message IDs returned by Redis for tracking
+- Monitor stream length to detect backlogs
+- Use connection pooling (`IConnectionMultiplexer` is thread-safe)
+
+### Consumer Resilience
+- Always acknowledge messages after successful processing
+- Implement idempotency for message handlers
+- Use consumer groups for parallel processing
+- Set reasonable timeouts for `XREADGROUP` operations
+- Monitor PEL (Pending Entries List) size
+- Implement claim/retry logic for stale pending messages
+
+### Schema Evolution
+- Never reuse field tag numbers
+- Use reserved fields for deleted tags
+- Add new optional fields instead of changing types
+- Document all changes in `CHANGELOG.md`
+- Test compatibility between schema versions
+
+---
+
+## 📖 Further Reading
+
+- [Redis Streams Introduction](https://redis.io/docs/data-types/streams/)
+- [Redis Consumer Groups](https://redis.io/docs/data-types/streams-tutorial/)
+- [Protocol Buffers Guide](https://protobuf.dev/programming-guides/proto3/)
+- [.NET Aspire Documentation](https://learn.microsoft.com/en-us/dotnet/aspire/)
+- [StackExchange.Redis Documentation](https://stackexchange.github.io/StackExchange.Redis/)
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+**This project uses Protocol Buffers (protobuf)** for all messages written to Redis Streams.
+
+### ✅ Protocol Buffers
+- Schema-based, compact binary serialization
+- Strong typing and version compatibility
+- Schema files stored in `docs/schemas/`
+- C# types generated at build time
+
+**Note:** JSON or schema-less formats (e.g., MessagePack) are NOT used for stream payloads, per project guidelines.
+
+Example `.proto` file:
+```protobuf
+syntax = "proto3";
+
+message EventData {
+    string producer = 1;
+    string message = 2;
+    int64 timestamp = 3;
 }
 ```
 
 ---
 
-## 📚 Related Resources
+## 📁 Project Structure
 
-- **Issues**: See [GitHub Issues](https://github.com/Peppe426/RedisFlow/issues) for detailed requirements
-  - [#1 - Set up Aspire host and Redis infrastructure](https://github.com/Peppe426/RedisFlow/issues/1)
-  - [#2 - Implement producers](https://github.com/Peppe426/RedisFlow/issues/2)
-  - [#3 - Implement consumer group processing](https://github.com/Peppe426/RedisFlow/issues/3)
-  - [#4 - Demonstrate message persistence](https://github.com/Peppe426/RedisFlow/issues/4)
-  - [#5 - Validate resilience scenarios](https://github.com/Peppe426/RedisFlow/issues/5)
-- **Test Structure**: [`docs/Test structure.md`](/docs/Test%20structure.md)
-- **Schema Evolution**: [`docs/schemas/CHANGELOG.md`](/docs/schemas/CHANGELOG.md)
-- **Aspire Documentation**: https://learn.microsoft.com/dotnet/aspire/
-- **Redis Streams**: https://redis.io/docs/data-types/streams/
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow:
-- [`.github/copilot-instructions.md`](/.github/copilot-instructions.md) for coding standards
-- [`docs/Test structure.md`](/docs/Test%20structure.md) for test conventions
-- Protocol Buffer schema rules when modifying message contracts
+```
+RedisFlow/
+├── src/
+│   └── RedisFlow/
+│       ├── RedisFlow.AppHost/          # Aspire orchestration host
+│       ├── RedisFlow.Domain/           # Shared contracts and domain models
+│       ├── RedisFlow.Services/         # Business logic
+│       ├── RedisFlow.ServiceDefaults/  # Common Aspire services
+│       ├── Tests.Producer/             # Producer console apps (test harness)
+│       └── Tests.Consumers/            # Consumer console apps (test harness)
+├── tests/
+│   └── RedisFlow.Integration/          # Integration tests with Aspire
+├── docs/
+│   ├── schemas/                        # Protobuf schema definitions
+│   └── Test structure.md               # Testing conventions
+└── README.md
+```
 
 ---
 
-## 📄 License
+## 🧪 Running Integration Tests
 
-See [LICENSE](LICENSE) file for details.
+Integration tests verify the complete produce/consume/replay flow using the Aspire Redis instance:
+
+```bash
+dotnet test tests/RedisFlow.Integration/
+```
+
+These tests will:
+- Automatically start the Aspire host and Redis container
+- Execute stream operations (produce, consume, acknowledge)
+- Verify pending message replay scenarios
+- Clean up resources after completion
+
+---
+
+## 💡 Resilience Expectations
+
+### Consumer Implementations Must Support:
+1. **Pending Message Replay:** Reprocess messages from the PEL (Pending Entries List) on restart
+2. **Producer-Offline Scenarios:** Continue consuming existing messages even when producers are unavailable
+3. **Stream ID Diagnostics:** Log and track stream IDs for debugging and monitoring
+
+### Producer Implementations Should:
+1. Handle Redis connection failures gracefully
+2. Implement retry logic with exponential backoff
+3. Log stream IDs for correlation with consumer logs
+
+---
+
+## 📖 Additional Documentation
+
+- [Test Structure Guidelines](docs/Test%20structure.md) - NUnit + FluentAssertions conventions
+- [Schema Evolution](docs/schemas/CHANGELOG.md) - Protobuf schema versioning rules
