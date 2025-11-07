@@ -14,6 +14,43 @@ A .NET 9 demonstration project showcasing Redis Streams with Protocol Buffers se
 
 ---
 
+## 🚀 Getting Started with Aspire
+
+### Prerequisites
+- .NET 9 SDK
+- Docker Desktop (for running Redis container)
+- Visual Studio 2022 17.9+ or JetBrains Rider 2024.1+ (recommended for Aspire dashboard)
+
+### Running the Application
+
+1. **Start the Aspire AppHost:**
+   ```bash
+   cd src/RedisFlow/RedisFlow.AppHost
+   dotnet run
+   ```
+
+   This will:
+   - Spin up a Redis container locally via Docker
+   - Start the Aspire Dashboard (typically at `http://localhost:15888`)
+   - Expose Redis connection information to other projects
+
+2. **Access the Aspire Dashboard:**
+   - Open your browser to the URL shown in the console (usually `http://localhost:15888`)
+   - View logs, traces, and metrics for all resources
+   - Monitor Redis container health and connection status
+
+3. **Stop the Aspire Host:**
+   - Press `Ctrl+C` in the terminal where AppHost is running
+   - Redis container will be stopped automatically
+
+### Connection Information
+
+The Redis connection string is automatically discoverable by producers and consumers through Aspire's service discovery:
+- Resource name: `redis`
+- Connection string format: `localhost:{dynamicPort}`
+
+---
+
 ## 🧩 Technical Objectives
 1. Set up a Redis server using .NET Aspire orchestration.
 2. Publish messages to a Redis stream using Protocol Buffers binary serialization.
@@ -26,128 +63,83 @@ A .NET 9 demonstration project showcasing Redis Streams with Protocol Buffers se
 ---
 
 ## 🔄 Serialization Strategy
-To ensure high performance and low overhead, the messages written to the Redis stream use **Protocol Buffers (protobuf)** for binary serialization.
 
-### ✅ Protocol Buffers (implemented)
-- Schema-defined, type-safe, and highly efficient binary format.
-- Suitable for production scenarios with strong contracts.
-- Schema files are versioned in `docs/schemas/`.
+**This project uses Protocol Buffers (protobuf)** for all messages written to Redis Streams.
 
-The `MessagePayload` protobuf schema:
+### ✅ Protocol Buffers
+- Schema-based, compact binary serialization
+- Strong typing and version compatibility
+- Schema files stored in `docs/schemas/`
+- C# types generated at build time
+
+**Note:** JSON or schema-less formats (e.g., MessagePack) are NOT used for stream payloads, per project guidelines.
+
+Example `.proto` file:
 ```protobuf
-message MessagePayload {
-  string producer = 1;
-  string content = 2;
-  google.protobuf.Timestamp created_at = 3;
+syntax = "proto3";
+
+message EventData {
+    string producer = 1;
+    string message = 2;
+    int64 timestamp = 3;
 }
 ```
 
 ---
 
-## 🚀 Running with .NET Aspire
-
-### Prerequisites
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for Redis container)
-- [.NET Aspire workload](https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling)
-
-### Install .NET Aspire workload
-```bash
-dotnet workload install aspire
-```
-
-### Run the Application
-Navigate to the AppHost project and run:
-
-```bash
-cd src/RedisFlow
-dotnet run --project RedisFlow.AppHost
-```
-
-This will:
-1. Start the Aspire Dashboard (typically at `http://localhost:15224`)
-2. Launch a Redis container
-3. Start both producer applications (Producer1 and Producer2)
-4. Display logs and telemetry in the Aspire Dashboard
-
-### Viewing Logs
-- Open the Aspire Dashboard URL shown in the console
-- Navigate to the **Resources** tab to see all running services
-- Click on individual producers to view their logs and observe messages being produced
-- Monitor Redis container health and connections
-
-### Stopping the Application
-Press `Ctrl+C` in the terminal where the AppHost is running. This will gracefully shut down all services.
-
----
-
-## 📊 Monitoring Messages
-
-### Using Redis CLI
-Once the Aspire application is running, you can connect to Redis and monitor the stream:
-
-```bash
-# Get Redis connection details from Aspire Dashboard
-docker exec -it <redis-container-name> redis-cli
-
-# View stream length
-XLEN messages:stream
-
-# Read latest messages
-XREAD COUNT 10 STREAMS messages:stream 0
-
-# View message details (decode protobuf separately)
-XRANGE messages:stream - + COUNT 10
-```
-
-### Using Aspire Dashboard
-- View producer logs to see message IDs being generated
-- Monitor resource metrics for Redis and producers
-- Track message throughput over time
-
----
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
-src/RedisFlow/
-├── RedisFlow.AppHost/           # Aspire orchestration host
-├── RedisFlow.ServiceDefaults/   # Shared service configuration
-├── RedisFlow.Domain/            # Domain models (Message)
-├── RedisFlow.Services/          # Service interfaces and implementations
-│   ├── Contracts/
-│   │   └── IProducer.cs
-│   └── Implementations/
-│       └── RedisProducer.cs     # Redis Stream producer with protobuf
-├── RedisFlow.Producer1/         # First producer console app
-├── RedisFlow.Producer2/         # Second producer console app
-└── Tests.Producer/              # Unit tests for producer
-
-docs/schemas/
-├── message.proto                # Protobuf schema definition
-└── CHANGELOG.md                 # Schema version history
+RedisFlow/
+├── src/
+│   └── RedisFlow/
+│       ├── RedisFlow.AppHost/          # Aspire orchestration host
+│       ├── RedisFlow.Domain/           # Shared contracts and domain models
+│       ├── RedisFlow.Services/         # Business logic
+│       ├── RedisFlow.ServiceDefaults/  # Common Aspire services
+│       ├── Tests.Producer/             # Producer console apps (test harness)
+│       └── Tests.Consumers/            # Consumer console apps (test harness)
+├── tests/
+│   └── RedisFlow.Integration/          # Integration tests with Aspire
+├── docs/
+│   ├── schemas/                        # Protobuf schema definitions
+│   └── Test structure.md               # Testing conventions
+└── README.md
 ```
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Integration Tests
+
+Integration tests verify the complete produce/consume/replay flow using the Aspire Redis instance:
 
 ```bash
-cd src/RedisFlow
-dotnet test
+dotnet test tests/RedisFlow.Integration/
 ```
 
-Tests include:
-- Argument validation for RedisProducer
-- Verification of Redis Stream operations
-- Protobuf serialization validation
+These tests will:
+- Automatically start the Aspire host and Redis container
+- Execute stream operations (produce, consume, acknowledge)
+- Verify pending message replay scenarios
+- Clean up resources after completion
 
 ---
 
-## 📝 Schema Evolution
+## 💡 Resilience Expectations
 
-All schema changes must be documented in `docs/schemas/CHANGELOG.md`. Follow protobuf best practices:
-- Never reuse tag numbers
-- Add new fields instead of modifying existing ones
-- Reserve numbers for deleted fields
-- Maintain backward compatibility
+### Consumer Implementations Must Support:
+1. **Pending Message Replay:** Reprocess messages from the PEL (Pending Entries List) on restart
+2. **Producer-Offline Scenarios:** Continue consuming existing messages even when producers are unavailable
+3. **Stream ID Diagnostics:** Log and track stream IDs for debugging and monitoring
+
+### Producer Implementations Should:
+1. Handle Redis connection failures gracefully
+2. Implement retry logic with exponential backoff
+3. Log stream IDs for correlation with consumer logs
+
+---
+
+## 📖 Additional Documentation
+
+- [Test Structure Guidelines](docs/Test%20structure.md) - NUnit + FluentAssertions conventions
+- [Schema Evolution](docs/schemas/CHANGELOG.md) - Protobuf schema versioning rules
