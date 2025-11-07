@@ -1,5 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+var redis = builder.AddRedis("redis")
+    .WithLifetime(ContainerLifetime.Persistent);
 // Add Redis resource for local development
 var redis = builder.AddRedis("redis")
     .WithLifetime(ContainerLifetime.Persistent);
