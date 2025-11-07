@@ -4,11 +4,11 @@
     <Project Path="Tests.Consumers/Tests.Consumers.csproj" />
     <Project Path="Tests.Producer/Tests.Producer.csproj" />
   </Folder>
-  <Project Path="Consumer/Consumer.csproj" />
-  <Project Path="Producer1/Producer1.csproj" />
-  <Project Path="Producer2/Producer2.csproj" />
+  <Project Path="../../tests/RedisFlow.Integration/RedisFlow.Integration.csproj" />
   <Project Path="RedisFlow.AppHost/RedisFlow.AppHost.csproj" />
   <Project Path="RedisFlow.Domain/RedisFlow.Domain.csproj" />
+  <Project Path="RedisFlow.Producer1/RedisFlow.Producer1.csproj" />
+  <Project Path="RedisFlow.Producer2/RedisFlow.Producer2.csproj" />
   <Project Path="RedisFlow.ServiceDefaults/RedisFlow.ServiceDefaults.csproj" />
   <Project Path="RedisFlow.Services/RedisFlow.Services.csproj" />
 </Solution>

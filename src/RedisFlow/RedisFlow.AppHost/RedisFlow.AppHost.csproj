@@ -16,9 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Producer1\Producer1.csproj" />
-    <ProjectReference Include="..\Producer2\Producer2.csproj" />
-    <ProjectReference Include="..\Consumer\Consumer.csproj" />
+    <ProjectReference Include="..\RedisFlow.Producer1\RedisFlow.Producer1.csproj" />
+    <ProjectReference Include="..\RedisFlow.Producer2\RedisFlow.Producer2.csproj" />
   </ItemGroup>
 
 </Project>
