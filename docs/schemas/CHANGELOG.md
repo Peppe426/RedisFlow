@@ -45,3 +45,11 @@ _No schema changes yet. Schemas will be added as producer and consumer implement
 - This file should be updated **before** merging any PR that modifies `.proto` files
 - Breaking changes require major version bump and migration guide
 - Use semantic versioning for schema versions
+## 2025-11-03 - Initial Schema
+
+### message.proto v1
+- Added `MessagePayload` message with fields:
+  - `producer` (tag 1): Producer identifier string
+  - `content` (tag 2): Message content string
+  - `created_at` (tag 3): Creation timestamp using `google.protobuf.Timestamp`
+- Used for Redis Stream message serialization

@@ -1,14 +1,16 @@
 
 # RedisFlow
 
-A demonstration project for Redis Streams using .NET 9 and .NET Aspire, showcasing producer/consumer patterns with message persistence and replay capabilities.
+A .NET 9 demonstration project showcasing Redis Streams with Protocol Buffers serialization, using .NET Aspire for orchestration.
 
 ---
 
 ## ⚙️ Components
-- **Redis Server:** Orchestrated via .NET Aspire AppHost; provides the stream and consumer group capabilities.
+- **Redis Server:** Hosted via .NET Aspire; provides stream and consumer group capabilities.
 - **Producers:** Two separate .NET console apps pushing serialized messages to the stream.
-- **Consumer:** A .NET console app reading from the stream using a consumer group.
+  - `RedisFlow.Producer1`: Sends messages every 2 seconds
+  - `RedisFlow.Producer2`: Sends messages every 3 seconds
+- **Consumer:** A .NET console app reading from the stream using a consumer group *(coming soon)*.
 
 ---
 
@@ -50,8 +52,8 @@ The Redis connection string is automatically discoverable by producers and consu
 ---
 
 ## 🧩 Technical Objectives
-1. ✅ Set up a Redis server via .NET Aspire (local Docker orchestration).
-2. Publish messages to a Redis stream using Protocol Buffers.
+1. Set up a Redis server using .NET Aspire orchestration.
+2. Publish messages to a Redis stream using Protocol Buffers binary serialization.
 3. Consume and acknowledge messages using consumer groups.
 4. Demonstrate message persistence and replay behavior.
 5. Observe system behavior when:

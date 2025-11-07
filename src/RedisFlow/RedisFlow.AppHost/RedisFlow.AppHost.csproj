@@ -15,4 +15,9 @@
     <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\RedisFlow.Producer1\RedisFlow.Producer1.csproj" />
+    <ProjectReference Include="..\RedisFlow.Producer2\RedisFlow.Producer2.csproj" />
+  </ItemGroup>
+
 </Project>
