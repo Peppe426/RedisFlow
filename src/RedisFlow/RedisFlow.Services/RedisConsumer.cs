@@ -1,4 +1,5 @@
-using MessagePack;
+using Google.Protobuf;
+using RedisFlow.Domain.Proto;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
@@ -7,73 +8,71 @@ namespace RedisFlow.Services;
 
 public class RedisConsumer : IConsumer
 {
-    private readonly IConnectionMultiplexer _redis;
-    private readonly string _streamKey;
+    private readonly IDatabase _database;
+    private readonly string _streamName;
     private readonly string _consumerGroup;
     private readonly string _consumerName;
 
-    public RedisConsumer(
-        IConnectionMultiplexer redis, 
-        string streamKey = "messages",
-        string consumerGroup = "default-group",
-        string? consumerName = null)
+    public RedisConsumer(IConnectionMultiplexer redis, string streamName, string consumerGroup, string consumerName)
     {
-        _redis = redis ?? throw new ArgumentNullException(nameof(redis));
-        _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
-        _consumerGroup = consumerGroup ?? throw new ArgumentNullException(nameof(consumerGroup));
-        _consumerName = consumerName ?? $"consumer-{Guid.NewGuid()}";
+        _database = redis.GetDatabase();
+        _streamName = streamName;
+        _consumerGroup = consumerGroup;
+        _consumerName = consumerName;
     }
 
     public async Task ConsumeAsync(Func<Message, CancellationToken, Task> handler, CancellationToken cancellationToken = default)
     {
-        if (handler == null)
-        {
-            throw new ArgumentNullException(nameof(handler));
-        }
-
-        var database = _redis.GetDatabase();
-
         // Ensure consumer group exists
-        await EnsureConsumerGroupExistsAsync(database);
+        await EnsureConsumerGroupExistsAsync();
 
-        // Process pending messages first
-        await ProcessPendingMessagesAsync(database, handler, cancellationToken);
+        // First, process any pending messages from previous runs
+        await ProcessPendingMessagesAsync(handler, cancellationToken);
 
-        // Then process new messages
+        // Then, continuously read new messages
         while (!cancellationToken.IsCancellationRequested)
         {
-            try
-            {
-                var streamEntries = await database.StreamReadGroupAsync(
-                    _streamKey,
-                    _consumerGroup,
-                    _consumerName,
-                    position: ">",
-                    count: 10);
+            var entries = await _database.StreamReadGroupAsync(
+                _streamName,
+                _consumerGroup,
+                _consumerName,
+                ">",
+                count: 10
+            );
 
-                if (streamEntries.Length == 0)
-                {
-                    await Task.Delay(100, cancellationToken);
+            foreach (var entry in entries)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                var data = entry.Values.FirstOrDefault(v => v.Name == "data");
+                if (data.Value.IsNull)
                     continue;
-                }
 
-                foreach (var entry in streamEntries)
-                {
-                    await ProcessStreamEntryAsync(database, entry, handler, cancellationToken);
-                }
+                var protoMessage = MessageProto.Parser.ParseFrom((byte[])data.Value!);
+                var message = new Message(
+                    protoMessage.Producer,
+                    protoMessage.Content
+                );
+
+                await handler(message, cancellationToken);
+                await _database.StreamAcknowledgeAsync(_streamName, _consumerGroup, entry.Id);
             }
-            catch (OperationCanceledException)
+
+            if (entries.Length == 0)
             {
-                break;
+                await Task.Delay(100, cancellationToken);
             }
         }
     }
 
-    private async Task EnsureConsumerGroupExistsAsync(IDatabase database)
+    private async Task EnsureConsumerGroupExistsAsync()
     {
         try
         {
-            await database.StreamCreateConsumerGroupAsync(_streamKey, _consumerGroup, StreamPosition.NewMessages);
+            // Use StreamPosition.Beginning to ensure we can recover messages added before group creation
+            // This is important for scenarios where messages exist in stream before consumer starts
+            await _database.StreamCreateConsumerGroupAsync(_streamName, _consumerGroup, StreamPosition.Beginning);
         }
         catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
         {
@@ -81,63 +80,49 @@ public class RedisConsumer : IConsumer
         }
     }
 
-    private async Task ProcessPendingMessagesAsync(
-        IDatabase database, 
-        Func<Message, CancellationToken, Task> handler, 
-        CancellationToken cancellationToken)
+    private async Task ProcessPendingMessagesAsync(Func<Message, CancellationToken, Task> handler, CancellationToken cancellationToken)
     {
-        var pendingMessages = await database.StreamPendingMessagesAsync(
-            _streamKey,
-            _consumerGroup,
-            count: 100,
-            _consumerName);
+        var pendingInfo = await _database.StreamPendingAsync(_streamName, _consumerGroup);
+        if (pendingInfo.PendingMessageCount == 0)
+            return;
 
-        foreach (var pendingMessage in pendingMessages)
+        var pendingMessages = await _database.StreamPendingMessagesAsync(
+            _streamName,
+            _consumerGroup,
+            (int)pendingInfo.PendingMessageCount,
+            RedisValue.Null
+        );
+
+        foreach (var pendingMsg in pendingMessages)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            // Claim the pending message
-            var claimedEntries = await database.StreamClaimAsync(
-                _streamKey,
+            // Claim the message if it's been idle for at least 5 seconds
+            // This prevents aggressive claiming and allows consumers time to process
+            var claimedEntries = await _database.StreamClaimAsync(
+                _streamName,
                 _consumerGroup,
                 _consumerName,
-                minIdleTimeInMs: 0,
-                messageIds: new[] { pendingMessage.MessageId });
+                5000, // Min idle time in milliseconds (5 seconds)
+                new[] { pendingMsg.MessageId }
+            );
 
             foreach (var entry in claimedEntries)
             {
-                await ProcessStreamEntryAsync(database, entry, handler, cancellationToken);
+                var data = entry.Values.FirstOrDefault(v => v.Name == "data");
+                if (data.Value.IsNull)
+                    continue;
+
+                var protoMessage = MessageProto.Parser.ParseFrom((byte[])data.Value!);
+                var message = new Message(
+                    protoMessage.Producer,
+                    protoMessage.Content
+                );
+
+                await handler(message, cancellationToken);
+                await _database.StreamAcknowledgeAsync(_streamName, _consumerGroup, entry.Id);
             }
-        }
-    }
-
-    private async Task ProcessStreamEntryAsync(
-        IDatabase database,
-        StreamEntry entry,
-        Func<Message, CancellationToken, Task> handler,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
-            if (dataField.Value.IsNull)
-            {
-                return;
-            }
-
-            var messageBytes = (byte[])dataField.Value!;
-            var message = MessagePackSerializer.Deserialize<Message>(messageBytes);
-
-            await handler(message, cancellationToken);
-
-            // Acknowledge the message
-            await database.StreamAcknowledgeAsync(_streamKey, _consumerGroup, entry.Id);
-        }
-        catch (Exception)
-        {
-            // In production, log the error and potentially implement retry logic
-            throw;
         }
     }
 }
