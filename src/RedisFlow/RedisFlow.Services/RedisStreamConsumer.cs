@@ -1,6 +1,6 @@
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
-using RedisFlow.Contracts.Messages;
+using RedisFlow.Contracts;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
@@ -9,170 +9,193 @@ namespace RedisFlow.Services;
 
 public class RedisStreamConsumer : IConsumer
 {
-    private readonly IDatabase _database;
+    private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisStreamConsumer> _logger;
     private readonly string _streamKey;
     private readonly string _consumerGroup;
     private readonly string _consumerName;
-    private readonly TimeSpan _pollingDelay;
-    private readonly TimeSpan _errorRetryDelay;
 
     public RedisStreamConsumer(
         IConnectionMultiplexer redis,
         ILogger<RedisStreamConsumer> logger,
         string consumerGroup = "default-group",
         string? consumerName = null,
-        string streamKey = "messages",
-        TimeSpan? pollingDelay = null,
-        TimeSpan? errorRetryDelay = null)
+        string streamKey = "redisflow:stream")
     {
-        _database = redis.GetDatabase();
-        _logger = logger;
-        _streamKey = streamKey;
-        _consumerGroup = consumerGroup;
-        _consumerName = consumerName ?? $"consumer-{Guid.NewGuid():N}";
-        _pollingDelay = pollingDelay ?? TimeSpan.FromMilliseconds(100);
-        _errorRetryDelay = errorRetryDelay ?? TimeSpan.FromSeconds(1);
+        _redis = redis ?? throw new ArgumentNullException(nameof(redis));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
+        _consumerGroup = consumerGroup ?? throw new ArgumentNullException(nameof(consumerGroup));
+        _consumerName = consumerName ?? Environment.MachineName;
     }
 
     public async Task ConsumeAsync(
         Func<Message, CancellationToken, Task> handler,
         CancellationToken cancellationToken = default)
     {
+        if (handler == null)
+            throw new ArgumentNullException(nameof(handler));
+
+        var db = _redis.GetDatabase();
+
         // Ensure consumer group exists
-        await EnsureConsumerGroupExistsAsync();
+        await EnsureConsumerGroupExistsAsync(db);
 
-        // First, process any pending messages (replay scenario)
-        await ProcessPendingMessagesAsync(handler, cancellationToken);
+        _logger.LogInformation(
+            "Starting consumer '{ConsumerName}' in group '{ConsumerGroup}' on stream '{StreamKey}'",
+            _consumerName,
+            _consumerGroup,
+            _streamKey);
 
-        // Then, continuously read new messages
+        // First, process any pending messages (replay)
+        await ProcessPendingMessagesAsync(db, handler, cancellationToken);
+
+        // Then continuously read new messages
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                var entries = await _database.StreamReadGroupAsync(
+                var entries = await db.StreamReadGroupAsync(
                     _streamKey,
                     _consumerGroup,
                     _consumerName,
-                    ">", // Only new messages
+                    ">", // Read only new messages
                     count: 10);
 
                 foreach (var entry in entries)
                 {
-                    await ProcessMessageAsync(entry, handler, cancellationToken);
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    await ProcessMessageAsync(db, entry, handler, cancellationToken);
                 }
 
                 if (entries.Length == 0)
                 {
-                    await Task.Delay(_pollingDelay, cancellationToken);
+                    // No messages, wait a bit before polling again
+                    await Task.Delay(1000, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
             {
+                _logger.LogInformation("Consumer cancelled");
                 break;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error consuming messages from stream {StreamKey}", _streamKey);
-                await Task.Delay(1000, cancellationToken);
+                _logger.LogError(ex, "Error reading from stream");
+                await Task.Delay(5000, cancellationToken);
             }
         }
     }
 
-    private async Task EnsureConsumerGroupExistsAsync()
+    private async Task EnsureConsumerGroupExistsAsync(IDatabase db)
     {
         try
         {
-            await _database.StreamCreateConsumerGroupAsync(
+            // Try to create the consumer group
+            await db.StreamCreateConsumerGroupAsync(
                 _streamKey,
                 _consumerGroup,
                 StreamPosition.NewMessages);
 
             _logger.LogInformation(
-                "Created consumer group {ConsumerGroup} for stream {StreamKey}",
-                _consumerGroup, _streamKey);
+                "Created consumer group '{ConsumerGroup}' on stream '{StreamKey}'",
+                _consumerGroup,
+                _streamKey);
         }
         catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
         {
-            // Consumer group already exists
-            _logger.LogDebug(
-                "Consumer group {ConsumerGroup} already exists for stream {StreamKey}",
-                _consumerGroup, _streamKey);
+            // Group already exists, this is fine
+            _logger.LogDebug("Consumer group '{ConsumerGroup}' already exists", _consumerGroup);
         }
     }
 
     private async Task ProcessPendingMessagesAsync(
+        IDatabase db,
         Func<Message, CancellationToken, Task> handler,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Checking for pending messages in consumer group {ConsumerGroup}",
-            _consumerGroup);
+        _logger.LogInformation("Checking for pending messages in PEL...");
 
-        var pendingInfo = await _database.StreamPendingAsync(_streamKey, _consumerGroup);
+        var pending = await db.StreamPendingMessagesAsync(
+            _streamKey,
+            _consumerGroup,
+            count: 100,
+            consumerName: _consumerName);
 
-        if (pendingInfo.PendingMessageCount > 0)
+        if (pending.Length > 0)
         {
-            _logger.LogInformation(
-                "Found {PendingCount} pending messages, processing them",
-                pendingInfo.PendingMessageCount);
+            _logger.LogInformation("Found {Count} pending messages to process", pending.Length);
 
-            // Read pending messages for this consumer
-            var entries = await _database.StreamReadGroupAsync(
+            // Claim and process pending messages
+            var messageIds = pending.Select(p => p.MessageId).ToArray();
+            var claimed = await db.StreamClaimAsync(
                 _streamKey,
                 _consumerGroup,
                 _consumerName,
-                "0", // Start from beginning of pending messages
-                count: (int)pendingInfo.PendingMessageCount);
+                minIdleTimeInMs: 0,
+                messageIds: messageIds);
 
-            foreach (var entry in entries)
+            foreach (var entry in claimed)
             {
-                await ProcessMessageAsync(entry, handler, cancellationToken);
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                await ProcessMessageAsync(db, entry, handler, cancellationToken);
             }
+        }
+        else
+        {
+            _logger.LogInformation("No pending messages found");
         }
     }
 
     private async Task ProcessMessageAsync(
+        IDatabase db,
         StreamEntry entry,
         Func<Message, CancellationToken, Task> handler,
         CancellationToken cancellationToken)
     {
         try
         {
+            // Extract the protobuf payload
             var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
-            if (dataField.Name.IsNullOrEmpty)
+            if (dataField.Value.IsNull)
             {
                 _logger.LogWarning("Message {MessageId} has no data field", entry.Id);
-                await _database.StreamAcknowledgeAsync(_streamKey, _consumerGroup, entry.Id);
+                await db.StreamAcknowledgeAsync(_streamKey, _consumerGroup, entry.Id);
                 return;
             }
 
-            var streamMessage = StreamMessage.Parser.ParseFrom((byte[])dataField.Value!);
+            var payload = (byte[])dataField.Value!;
+            var eventMessage = EventMessage.Parser.ParseFrom(payload);
 
+            // Convert protobuf EventMessage to domain Message
             var message = new Message(
-                streamMessage.Producer,
-                streamMessage.Content);
+                eventMessage.Producer,
+                eventMessage.Content);
 
             _logger.LogInformation(
-                "Processing message {MessageId} from producer {Producer}",
-                entry.Id, streamMessage.Producer);
+                "Processing message {MessageId} from producer '{Producer}'",
+                entry.Id,
+                eventMessage.Producer);
 
+            // Invoke the handler
             await handler(message, cancellationToken);
 
-            // Acknowledge the message after successful processing
-            await _database.StreamAcknowledgeAsync(_streamKey, _consumerGroup, entry.Id);
+            // Acknowledge the message
+            await db.StreamAcknowledgeAsync(_streamKey, _consumerGroup, entry.Id);
 
-            _logger.LogInformation(
-                "Acknowledged message {MessageId}",
-                entry.Id);
+            _logger.LogDebug("Acknowledged message {MessageId}", entry.Id);
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
-                "Error processing message {MessageId}, will remain in pending list",
+                "Error processing message {MessageId}. Message will remain in PEL for retry.",
                 entry.Id);
-            // Message remains in PEL for retry
+            // Don't acknowledge - message stays in PEL for retry
         }
     }
 }

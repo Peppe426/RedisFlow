@@ -1,12 +1,9 @@
-using Google.Protobuf;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
-using RedisFlow.Contracts;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
 
-namespace RedisFlow.Services;
+namespace RedisFlow.Services.Implementations;
 
 public class RedisStreamProducer : IProducer
 {
@@ -17,7 +14,7 @@ public class RedisStreamProducer : IProducer
     public RedisStreamProducer(
         IConnectionMultiplexer redis,
         ILogger<RedisStreamProducer> logger,
-        string streamKey = "redisflow:stream")
+        string streamKey = "messages")
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -30,30 +27,20 @@ public class RedisStreamProducer : IProducer
             throw new ArgumentNullException(nameof(message));
 
         var db = _redis.GetDatabase();
+        var serialized = message.Serialize();
 
-        // Convert domain Message to protobuf EventMessage
-        var eventMessage = new EventMessage
+        var entries = new[]
         {
-            Producer = message.Producer,
-            Content = message.Content,
-            CreatedAt = Timestamp.FromDateTime(message.CreatedAt)
+            new NameValueEntry("data", serialized)
         };
 
-        // Serialize to byte array
-        var payload = eventMessage.ToByteArray();
-
-        // Add to Redis stream
-        var streamEntries = new NameValueEntry[]
-        {
-            new NameValueEntry("data", payload)
-        };
-
-        var messageId = await db.StreamAddAsync(_streamKey, streamEntries);
-
+        var messageId = await db.StreamAddAsync(_streamKey, entries);
+        
         _logger.LogInformation(
-            "Produced message to stream '{StreamKey}' with ID '{MessageId}' from producer '{Producer}'",
+            "Produced message to stream {StreamKey} with ID {MessageId}. Producer: {Producer}, Content: {Content}",
             _streamKey,
             messageId,
-            message.Producer);
+            message.Producer,
+            message.Content);
     }
 }
