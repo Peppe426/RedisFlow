@@ -1,23 +1,27 @@
-﻿namespace RedisFlow.Domain.ValueObjects;
+﻿using MessagePack;
 
+namespace RedisFlow.Domain.ValueObjects;
+
+[MessagePackObject]
 public class Message
 {
-    public string Producer
-    {
-        get;
-        private set;
-    }
+    [Key(0)]
+    public string Producer { get; set; } = string.Empty;
 
-    public string Content
-    {
-        get;
-    }
+    [Key(1)]
+    public string Content { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; } = DateTime.UtcNow;
+    [Key(2)]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public Message()
+    {
+    }
 
     public Message(string producer, string content)
     {
         Producer = producer;
         Content = content;
+        CreatedAt = DateTime.UtcNow;
     }
 }
