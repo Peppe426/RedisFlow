@@ -13,6 +13,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="FluentAssertions" Version="[7.0.0]" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
@@ -23,9 +24,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="NUnit3TestAdapter" Version="5.2.0" />
-    <PackageReference Include="Verify" Version="31.4.1" />
+    <PackageReference Include="Verify" Version="31.5.1" />
     <PackageReference Include="Verify.ImageHash" Version="2.1.2" />
-    <PackageReference Include="Verify.NUnit" Version="31.4.1" />
+    <PackageReference Include="Verify.NUnit" Version="31.5.1" />
   </ItemGroup>
 
   <ItemGroup>

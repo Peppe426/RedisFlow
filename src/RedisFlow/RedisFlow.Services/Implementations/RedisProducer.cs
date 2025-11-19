@@ -1,10 +1,13 @@
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
-using RedisFlow.Contracts;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Messages;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RedisFlow.Services.Implementations;
 
@@ -24,7 +27,7 @@ public class RedisProducer : IProducer
         _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
     }
 
-    public async Task ProduceAsync(Message message, CancellationToken cancellationToken = default)
+    public async Task<string> ProduceAsync(Message message, CancellationToken cancellationToken = default)
     {
         if (message == null)
         {
@@ -35,29 +38,23 @@ public class RedisProducer : IProducer
 
         var db = _redis.GetDatabase();
 
-        // Convert domain Message to protobuf MessagePayload
-        var payload = new MessagePayload
-        {
-            Producer = message.Producer,
-            Content = message.Content,
-            CreatedAt = Timestamp.FromDateTime(message.CreatedAt.ToUniversalTime())
-        };
-
-        // Serialize to byte array
-        var serializedData = payload.ToByteArray();
+        // Serialize message using protobuf
+        byte[] serializedData = RedisFlow.Domain.Messages.MessageExtensions.ToBytes(message);
 
         // Add to Redis Stream with single field containing serialized protobuf
-        var streamEntry = new NameValueEntry[]
+        NameValueEntry[] streamEntry = new NameValueEntry[]
         {
             new("data", serializedData)
         };
 
-        var messageId = await db.StreamAddAsync(_streamKey, streamEntry);
+        RedisValue messageId = await db.StreamAddAsync(_streamKey, streamEntry);
 
         _logger.LogInformation(
             "Produced message to stream '{StreamKey}' with ID '{MessageId}' from producer '{Producer}'",
             _streamKey,
             messageId,
             message.Producer);
+
+        return messageId.ToString();
     }
 }

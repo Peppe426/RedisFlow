@@ -1,10 +1,19 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services;
+using RedisFlow.Services.Implementations;
 using StackExchange.Redis;
 using TestBase;
-
-namespace Tests.Consumers;
+using Microsoft.Extensions.Logging;
+using Moq;
 
 [TestFixture]
 [Category("Integration test")]
@@ -13,16 +22,29 @@ public class ResilienceIntegrationTests : UnitTest
     private IConnectionMultiplexer? _redis;
     private const string StreamName = "test-stream";
     private const string ConsumerGroup = "test-group";
+    private Mock<ILogger<RedisProducer>> _producerLoggerMock;
+    private Mock<ILogger<RedisConsumer>> _consumerLoggerMock;
 
     [OneTimeSetUp]
     public async Task OneTimeSetup()
     {
-        // Connect to Redis (assumes Redis is running locally or via Aspire)
-        _redis = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
-        
-        // Clean up any existing test data
-        var db = _redis.GetDatabase();
-        await db.KeyDeleteAsync(StreamName);
+        try
+        {
+            // Connect to Redis (assumes Redis is running locally or via Aspire)
+            _redis = await ConnectionMultiplexer.ConnectAsync("localhost:6379");
+            
+            // Initialize mocks
+            _producerLoggerMock = new Mock<ILogger<RedisProducer>>();
+            _consumerLoggerMock = new Mock<ILogger<RedisConsumer>>();
+            
+            // Clean up any existing test data
+            var db = _redis.GetDatabase();
+            await db.KeyDeleteAsync(StreamName);
+        }
+        catch (RedisConnectionException)
+        {
+            Assert.Ignore("Redis server is not available. Skipping integration tests that require Redis.");
+        }
     }
 
     [OneTimeTearDown]
@@ -37,7 +59,7 @@ public class ResilienceIntegrationTests : UnitTest
     }
 
     [SetUp]
-    public new async Task TestSetup()
+    public async new Task TestSetup()
     {
         // Clean stream before each test
         if (_redis != null)
@@ -51,8 +73,8 @@ public class ResilienceIntegrationTests : UnitTest
     public async Task Should_ContinueProcessing_When_OneProducerGoesOffline()
     {
         // Given
-        var producer1 = new RedisProducer(_redis!, StreamName);
-        var producer2 = new RedisProducer(_redis!, StreamName);
+        var producer1 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
+        var producer2 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
         var receivedMessages = new List<Message>();
         var consumer = new RedisConsumer(_redis!, StreamName, ConsumerGroup, "consumer1");
         
@@ -95,7 +117,7 @@ public class ResilienceIntegrationTests : UnitTest
     public async Task Should_ReprocessPendingMessages_When_ConsumerRestarts()
     {
         // Given
-        var producer = new RedisProducer(_redis!, StreamName);
+        var producer = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
         var receivedMessages = new List<Message>();
         
         // Send messages
@@ -153,8 +175,8 @@ public class ResilienceIntegrationTests : UnitTest
     public async Task Should_HandleCombinedScenario_When_ProducerOfflineAndConsumerRestarts()
     {
         // Given
-        var producer1 = new RedisProducer(_redis!, StreamName);
-        var producer2 = new RedisProducer(_redis!, StreamName);
+        var producer1 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
+        var producer2 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
         var receivedMessages = new List<Message>();
         
         // Producer 1 sends initial messages
@@ -214,8 +236,8 @@ public class ResilienceIntegrationTests : UnitTest
     public async Task Should_ProvideStreamMetrics_When_ProducerOffline()
     {
         // Given
-        var producer1 = new RedisProducer(_redis!, StreamName);
-        var producer2 = new RedisProducer(_redis!, StreamName);
+        var producer1 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
+        var producer2 = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
         
         // When - Both producers send messages
         await producer1.ProduceAsync(new Message("Producer1", "Message1"), CancellationToken.None);
@@ -235,7 +257,7 @@ public class ResilienceIntegrationTests : UnitTest
     public async Task Should_RecoverPendingMessages_When_ConsumerRestartsWithDifferentName()
     {
         // Given
-        var producer = new RedisProducer(_redis!, StreamName);
+        var producer = new RedisProducer(_redis!, _producerLoggerMock.Object, StreamName);
         await producer.ProduceAsync(new Message("Producer1", "Message1"), CancellationToken.None);
         await producer.ProduceAsync(new Message("Producer1", "Message2"), CancellationToken.None);
 

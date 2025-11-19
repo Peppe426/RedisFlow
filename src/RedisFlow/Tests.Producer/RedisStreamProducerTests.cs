@@ -83,13 +83,7 @@ public class RedisStreamProducerTests : UnitTest
         mockRedis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
             .Returns(mockDb.Object);
 
-        mockDb.Setup(db => db.StreamAddAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<NameValueEntry[]>(),
-                It.IsAny<RedisValue?>(),
-                It.IsAny<int?>(),
-                It.IsAny<bool>(),
-                It.IsAny<CommandFlags>()))
+        mockDb.Setup(db => db.StreamAddAsync(It.IsAny<RedisKey>(), It.IsAny<NameValueEntry[]>()))
             .ReturnsAsync(new RedisValue("1234-0"));
 
         var logger = Mock.Of<ILogger<RedisStreamProducer>>();
@@ -104,10 +98,7 @@ public class RedisStreamProducerTests : UnitTest
             It.Is<RedisKey>(k => k == "test-stream"),
             It.Is<NameValueEntry[]>(entries => 
                 entries.Length == 1 && 
-                entries[0].Name == "data"),
-            null,
-            null,
-            false,
-            CommandFlags.None), Times.Once);
+                entries[0].Name == "data" &&
+                entries[0].Value.HasValue)), Times.Once);
     }
 }

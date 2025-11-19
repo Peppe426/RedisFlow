@@ -1,17 +1,23 @@
-﻿using MessagePack;
+﻿namespace RedisFlow.Domain.ValueObjects;
 
-namespace RedisFlow.Domain.ValueObjects;
-
-[MessagePackObject]
+/// <summary>
+/// Domain message representing a message in the Redis stream
+/// </summary>
 public class Message
 {
-    [Key(0)]
+    /// <summary>
+    /// Producer identifier
+    /// </summary>
     public string Producer { get; set; } = string.Empty;
 
-    [Key(1)]
+    /// <summary>
+    /// Message content
+    /// </summary>
     public string Content { get; set; } = string.Empty;
 
-    [Key(2)]
+    /// <summary>
+    /// Timestamp when the message was created
+    /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Message()
@@ -23,5 +29,12 @@ public class Message
         Producer = producer;
         Content = content;
         CreatedAt = DateTime.UtcNow;
+    }
+
+    public Message(string producer, string content, DateTime createdAt)
+    {
+        Producer = producer;
+        Content = content;
+        CreatedAt = createdAt;
     }
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <Sdk Name="Aspire.AppHost.Sdk" Version="9.5.1" />
 
@@ -13,11 +13,6 @@
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="9.5.2" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="9.5.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\RedisFlow.Producer1\RedisFlow.Producer1.csproj" />
-    <ProjectReference Include="..\RedisFlow.Producer2\RedisFlow.Producer2.csproj" />
   </ItemGroup>
 
 </Project>

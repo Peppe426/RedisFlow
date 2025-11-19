@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.ServiceDefaults;
 using RedisFlow.Services.Contracts;
 using RedisFlow.Services.Extensions;
 

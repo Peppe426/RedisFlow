@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Messages;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RedisFlow.Services.Implementations;
 
@@ -21,26 +24,28 @@ public class RedisStreamProducer : IProducer
         _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
     }
 
-    public async Task ProduceAsync(Message message, CancellationToken cancellationToken = default)
+    public async Task<string> ProduceAsync(Message message, CancellationToken cancellationToken = default)
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
 
         var db = _redis.GetDatabase();
-        var serialized = message.Serialize();
+        byte[] serialized = RedisFlow.Domain.Messages.MessageExtensions.ToBytes(message);
 
-        var entries = new[]
+        NameValueEntry[] entries = new NameValueEntry[]
         {
             new NameValueEntry("data", serialized)
         };
 
-        var messageId = await db.StreamAddAsync(_streamKey, entries);
-        
+        RedisValue messageId = await db.StreamAddAsync(_streamKey, entries);
+
         _logger.LogInformation(
             "Produced message to stream {StreamKey} with ID {MessageId}. Producer: {Producer}, Content: {Content}",
             _streamKey,
             messageId,
             message.Producer,
             message.Content);
+
+        return messageId.ToString();
     }
 }

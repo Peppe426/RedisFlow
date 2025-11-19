@@ -1,8 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 
-// Single Redis instance for streaming only
 var redis = builder.AddRedis("redis");
-
 
 
 builder.Build().Run();

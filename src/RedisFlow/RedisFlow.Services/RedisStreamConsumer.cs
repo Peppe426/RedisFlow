@@ -1,9 +1,13 @@
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
-using RedisFlow.Contracts;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Messages;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RedisFlow.Services;
 
@@ -168,18 +172,13 @@ public class RedisStreamConsumer : IConsumer
                 return;
             }
 
-            var payload = (byte[])dataField.Value!;
-            var eventMessage = EventMessage.Parser.ParseFrom(payload);
-
-            // Convert protobuf EventMessage to domain Message
-            var message = new Message(
-                eventMessage.Producer,
-                eventMessage.Content);
+            byte[] payload = (byte[])dataField.Value!;
+            Message message = RedisFlow.Domain.Messages.MessageExtensions.FromBytes(payload);
 
             _logger.LogInformation(
                 "Processing message {MessageId} from producer '{Producer}'",
                 entry.Id,
-                eventMessage.Producer);
+                message.Producer);
 
             // Invoke the handler
             await handler(message, cancellationToken);

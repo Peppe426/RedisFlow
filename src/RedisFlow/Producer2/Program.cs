@@ -2,8 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RedisFlow.Domain.ValueObjects;
-using RedisFlow.Services;
 using RedisFlow.Services.Contracts;
+using RedisFlow.Services.Implementations;
 
 var builder = Host.CreateApplicationBuilder(args);
 

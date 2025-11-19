@@ -1,10 +1,13 @@
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
-using RedisFlow.Contracts;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Messages;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RedisFlow.Services;
 
@@ -24,36 +27,30 @@ public class RedisStreamProducer : IProducer
         _streamKey = streamKey ?? throw new ArgumentNullException(nameof(streamKey));
     }
 
-    public async Task ProduceAsync(Message message, CancellationToken cancellationToken = default)
+    public async Task<string> ProduceAsync(Message message, CancellationToken cancellationToken = default)
     {
         if (message == null)
             throw new ArgumentNullException(nameof(message));
 
         var db = _redis.GetDatabase();
 
-        // Convert domain Message to protobuf EventMessage
-        var eventMessage = new EventMessage
-        {
-            Producer = message.Producer,
-            Content = message.Content,
-            CreatedAt = Timestamp.FromDateTime(message.CreatedAt)
-        };
-
-        // Serialize to byte array
-        var payload = eventMessage.ToByteArray();
+        // Serialize message using protobuf
+        byte[] payload = RedisFlow.Domain.Messages.MessageExtensions.ToBytes(message);
 
         // Add to Redis stream
-        var streamEntries = new NameValueEntry[]
+        NameValueEntry[] streamEntries = new NameValueEntry[]
         {
             new NameValueEntry("data", payload)
         };
 
-        var messageId = await db.StreamAddAsync(_streamKey, streamEntries);
+        RedisValue messageId = await db.StreamAddAsync(_streamKey, streamEntries);
 
         _logger.LogInformation(
             "Produced message to stream '{StreamKey}' with ID '{MessageId}' from producer '{Producer}'",
             _streamKey,
             messageId,
             message.Producer);
+
+        return messageId.ToString();
     }
 }

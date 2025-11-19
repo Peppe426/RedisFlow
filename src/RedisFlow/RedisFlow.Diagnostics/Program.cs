@@ -7,6 +7,14 @@ internal class Program
 {
     private static async Task<int> Main(string[] args)
     {
+        // If first argument is "wsl-check", run connection checker
+        if (args.Length > 0 && args[0] == "wsl-check")
+        {
+            var connStr = args.Length > 1 ? args[1] : null;
+            var success = await WslConnectionChecker.CheckConnectionAsync(connStr);
+            return success ? 0 : 1;
+        }
+
         var connectionString = args.Length > 0 ? args[0] : "localhost:6379";
         var streamName = args.Length > 1 ? args[1] : "mystream";
 

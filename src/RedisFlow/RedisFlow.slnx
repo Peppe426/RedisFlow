@@ -1,15 +1,8 @@
 <Solution>
   <Folder Name="/Tests/">
     <Project Path="TestBase/TestBase.csproj" />
-    <Project Path="Tests.Consumers/Tests.Consumers.csproj" />
-    <Project Path="Tests.Producer/Tests.Producer.csproj" />
   </Folder>
-  <Project Path="../../tests/RedisFlow.Integration/RedisFlow.Integration.csproj" />
-  <Project Path="RedisFlow.AppHost/RedisFlow.AppHost.csproj" />
-  <Project Path="RedisFlow.Diagnostics/RedisFlow.Diagnostics.csproj" />
+  <Project Path="AppHost/AppHost.csproj" Id="0734a735-3b68-4639-8d24-7631bc7ad6c5" />
+  <Project Path="RedisFlow.Core/RedisFlow.Core.csproj" Id="f38e4a83-a7dc-4799-b77c-6880d09cff40" />
   <Project Path="RedisFlow.Domain/RedisFlow.Domain.csproj" />
-  <Project Path="RedisFlow.Producer1/RedisFlow.Producer1.csproj" />
-  <Project Path="RedisFlow.Producer2/RedisFlow.Producer2.csproj" />
-  <Project Path="RedisFlow.ServiceDefaults/RedisFlow.ServiceDefaults.csproj" />
-  <Project Path="RedisFlow.Services/RedisFlow.Services.csproj" />
 </Solution>

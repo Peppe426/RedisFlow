@@ -1,5 +1,9 @@
 using FluentAssertions;
 using RedisFlow.Domain.Messages;
+using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Proto;
+using Google.Protobuf.WellKnownTypes;
+using System;
 
 namespace Tests.Producer;
 
@@ -73,7 +77,7 @@ public class MessageSerializationTests
         var domainMessage = new RedisFlow.Domain.ValueObjects.Message("Producer1", "Test content");
 
         // When
-        var protoMessage = domainMessage.ToProto();
+        var protoMessage = RedisFlow.Domain.Messages.MessageExtensions.ToProto(domainMessage);
 
         // Then
         protoMessage.Should().NotBeNull("because conversion should produce a valid protobuf message");
@@ -85,19 +89,15 @@ public class MessageSerializationTests
     public void Should_ConvertToDomain_When_ProtoMessageIsProvided()
     {
         // Given
-        var protoMessage = new RedisFlow.Domain.Messages.Message
-        {
-            Producer = "Producer1",
-            Content = "Test content",
-            CreatedAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(DateTime.UtcNow)
-        };
+        var originalMessage = new RedisFlow.Domain.ValueObjects.Message("Producer1", "Test content");
+        var bytes = RedisFlow.Domain.Messages.MessageExtensions.ToBytes(originalMessage);
 
         // When
-        var domainMessage = protoMessage.ToDomain();
+        var deserializedMessage = RedisFlow.Domain.Messages.MessageExtensions.FromBytes(bytes);
 
         // Then
-        domainMessage.Should().NotBeNull("because conversion should produce a valid domain message");
-        domainMessage.Producer.Should().Be(protoMessage.Producer, "because the producer should be converted correctly");
-        domainMessage.Content.Should().Be(protoMessage.Content, "because the content should be converted correctly");
+        deserializedMessage.Should().NotBeNull("because deserialization should produce a valid domain message");
+        deserializedMessage.Producer.Should().Be(originalMessage.Producer, "because the producer should be preserved during serialization");
+        deserializedMessage.Content.Should().Be(originalMessage.Content, "because the content should be preserved during serialization");
     }
 }

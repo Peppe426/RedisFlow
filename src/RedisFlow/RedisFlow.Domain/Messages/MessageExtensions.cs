@@ -1,20 +1,21 @@
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Proto;
 
 namespace RedisFlow.Domain.Messages;
 
 /// <summary>
-/// Extension methods for converting between protobuf Message and domain Message
+/// Extension methods for converting between protobuf MessageProto and domain Message
 /// </summary>
 public static class MessageExtensions
 {
     /// <summary>
-    /// Converts a domain Message to a protobuf Message for serialization
+    /// Converts a domain Message to a protobuf MessageProto for serialization
     /// </summary>
-    public static Message ToProto(this ValueObjects.Message domainMessage)
+    public static MessageProto ToProto(this ValueObjects.Message domainMessage)
     {
-        return new Message
+        return new MessageProto
         {
             Producer = domainMessage.Producer,
             Content = domainMessage.Content,
@@ -23,9 +24,9 @@ public static class MessageExtensions
     }
 
     /// <summary>
-    /// Converts a protobuf Message to a domain Message for consumption
+    /// Converts a protobuf MessageProto to a domain Message for consumption
     /// </summary>
-    public static ValueObjects.Message ToDomain(this Message protoMessage)
+    public static ValueObjects.Message ToDomain(this MessageProto protoMessage)
     {
         return new ValueObjects.Message(
             protoMessage.Producer,
@@ -43,10 +44,10 @@ public static class MessageExtensions
     }
 
     /// <summary>
-    /// Deserializes a protobuf Message from binary format to domain Message
+    /// Deserializes a protobuf MessageProto from binary format to domain Message
     /// </summary>
     public static ValueObjects.Message FromBytes(byte[] bytes)
     {
-        return Message.Parser.ParseFrom(bytes).ToDomain();
+        return MessageProto.Parser.ParseFrom(bytes).ToDomain();
     }
 }

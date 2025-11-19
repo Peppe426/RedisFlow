@@ -2,7 +2,7 @@ using FluentAssertions;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using Moq;
-using RedisFlow.Contracts;
+using RedisFlow.Services.Contracts;
 using RedisFlow.Domain.ValueObjects;
 using RedisFlow.Services.Implementations;
 using StackExchange.Redis;
@@ -90,13 +90,7 @@ public class RedisProducerTests
         mockRedis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
             .Returns(mockDatabase.Object);
         
-        mockDatabase.Setup(db => db.StreamAddAsync(
-                It.IsAny<RedisKey>(),
-                It.IsAny<NameValueEntry[]>(),
-                It.IsAny<RedisValue?>(),
-                It.IsAny<int?>(),
-                It.IsAny<bool>(),
-                It.IsAny<CommandFlags>()))
+        mockDatabase.Setup(db => db.StreamAddAsync(It.IsAny<RedisKey>(), It.IsAny<NameValueEntry[]>()))
             .ReturnsAsync("1234567890-0");
 
         var sut = new RedisProducer(mockRedis.Object, logger, "test:stream");
@@ -107,11 +101,10 @@ public class RedisProducerTests
 
         // Then
         mockDatabase.Verify(db => db.StreamAddAsync(
-            It.IsAny<RedisKey>(),
-            It.IsAny<NameValueEntry[]>(),
-            It.IsAny<RedisValue?>(),
-            It.IsAny<int?>(),
-            It.IsAny<bool>(),
-            It.IsAny<CommandFlags>()), Times.Once);
+            It.Is<RedisKey>(k => k == "test:stream"),
+            It.Is<NameValueEntry[]>(entries => 
+                entries.Length == 1 && 
+                entries[0].Name == "data" &&
+                entries[0].Value.HasValue)), Times.Once);
     }
 }
