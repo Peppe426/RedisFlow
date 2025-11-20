@@ -7,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
-using RedisFlow.Core.Extensions;
 
 namespace RedisFlow.Core.Extensions;
 
