@@ -1,7 +1,5 @@
 using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
-using RedisFlow.Domain.ValueObjects;
-using RedisFlow.Domain.Proto;
 
 namespace RedisFlow.Domain.Messages;
 

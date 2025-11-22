@@ -3,6 +3,9 @@
     <Project Path="TestBase/TestBase.csproj" />
   </Folder>
   <Project Path="AppHost/AppHost.csproj" Id="0734a735-3b68-4639-8d24-7631bc7ad6c5" />
+  <Project Path="RedisFlow.Core.Infrastructure.Repository/RedisFlow.Infrastructure.Repository.csproj" Id="6a35a929-da16-4f6a-9d91-957cae79c251" />
   <Project Path="RedisFlow.Core/RedisFlow.Core.csproj" Id="f38e4a83-a7dc-4799-b77c-6880d09cff40" />
   <Project Path="RedisFlow.Domain/RedisFlow.Domain.csproj" />
+  <Project Path="RedisFlow.Infrastructure.IO/RedisFlow.Infrastructure.IO.csproj" Id="29d31e92-993c-4c97-8a89-a949567082e2" />
+  <Project Path="RedisFlow.Infrastructure.Notification/RedisFlow.Infrastructure.Notification.csproj" Id="2d1e6a4e-10b5-4f74-9754-a1ab0f251c50" />
 </Solution>
