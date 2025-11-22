@@ -1,6 +1,10 @@
 <Solution>
   <Folder Name="/Tests/">
     <Project Path="TestBase/TestBase.csproj" />
+    <Project Path="Tests.Domain/Tests.Domain.csproj" Id="38367571-5d37-4bc8-bb77-094821bfeb11" />
+    <Project Path="Tests.InfrastructureIO/Tests.InfrastructureIO.csproj" Id="fba3bd1c-2ee3-4bcc-a1da-5e24c496e3e7" />
+    <Project Path="Tests.InfrastructureNotification/Tests.InfrastructureNotification.csproj" Id="90b2c19a-256d-4370-a76e-8a5782f3ebdc" />
+    <Project Path="Tests.InfrastructureRepository/Tests.InfrastructureRepository.csproj" Id="391f70da-bd21-4ed8-a249-4021f65c5652" />
   </Folder>
   <Project Path="AppHost/AppHost.csproj" Id="0734a735-3b68-4639-8d24-7631bc7ad6c5" />
   <Project Path="RedisFlow.Core.Infrastructure.Repository/RedisFlow.Infrastructure.Repository.csproj" Id="6a35a929-da16-4f6a-9d91-957cae79c251" />
