@@ -21,7 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RedisFlow.Infrastructure.IO\RedisFlow.Infrastructure.IO.csproj" />
-    <ProjectReference Include="..\TestBase\TestBase.csproj" />
   </ItemGroup>
 
   <ItemGroup>

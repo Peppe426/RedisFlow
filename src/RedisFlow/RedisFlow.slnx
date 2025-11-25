@@ -1,6 +1,6 @@
 <Solution>
   <Folder Name="/Tests/">
-    <Project Path="TestBase/TestBase.csproj" />
+    <Project Path="TestBase/TestBase.csproj" Id="b1d76f5a-36d3-4ee1-9eec-c21a5c12d392" />
     <Project Path="Tests.Domain/Tests.Domain.csproj" Id="38367571-5d37-4bc8-bb77-094821bfeb11" />
     <Project Path="Tests.InfrastructureIO/Tests.InfrastructureIO.csproj" Id="fba3bd1c-2ee3-4bcc-a1da-5e24c496e3e7" />
     <Project Path="Tests.InfrastructureNotification/Tests.InfrastructureNotification.csproj" Id="90b2c19a-256d-4370-a76e-8a5782f3ebdc" />
