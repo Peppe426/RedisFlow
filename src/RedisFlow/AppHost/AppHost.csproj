@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\RedisFlow.Core\RedisFlow.Core.csproj" />
+    <ProjectReference Include="..\RedisFlow.Domain\RedisFlow.Domain.csproj" />
   </ItemGroup>
 
 </Project>
