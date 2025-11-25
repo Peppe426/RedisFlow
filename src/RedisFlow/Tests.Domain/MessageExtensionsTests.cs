@@ -16,7 +16,7 @@ public class MessageExtensionsTests
     public void Should_ConvertToProto_WhenDomainMessageIsProvided()
     {
         // Given
-        var domainMessage = new Message<string>("test-producer", "test content");
+        var domainMessage = new Entry<string>("test-producer", "test content");
 
         // When
         var protoMessage = domainMessage.ToProto();
@@ -53,7 +53,7 @@ public class MessageExtensionsTests
     public void Should_SerializeToBytes_WhenDomainMessageIsProvided()
     {
         // Given
-        var domainMessage = new Message<string>("test-producer", "test content");
+        var domainMessage = new Entry<string>("test-producer", "test content");
 
         // When
         var bytes = domainMessage.ToBytes();
@@ -68,7 +68,7 @@ public class MessageExtensionsTests
     public void Should_DeserializeFromBytes_WhenValidBytesAreProvided()
     {
         // Given
-        var originalMessage = new Message<string>("test-producer", "test content");
+        var originalMessage = new Entry<string>("test-producer", "test content");
         var bytes = originalMessage.ToBytes();
 
         // When
@@ -86,7 +86,7 @@ public class MessageExtensionsTests
         // Given
         var originalProducer = "round-trip-producer";
         var originalContent = "round-trip content with special chars: !@#$%^&*()";
-        var originalMessage = new Message<string>(originalProducer, originalContent);
+        var originalMessage = new Entry<string>(originalProducer, originalContent);
 
         // When
         var bytes = originalMessage.ToBytes();
@@ -103,7 +103,7 @@ public class MessageExtensionsTests
         // Given
         var producer = "service";
         var content = "Hello, Redis!";
-        var message = new Message<string>(producer, content);
+        var message = new Entry<string>(producer, content);
         
         // Calculate equivalent JSON size for comparison
         var jsonEquivalent = $"{{\"producer\":\"{producer}\",\"content\":\"{content}\",\"createdAt\":\"{message.CreatedAt:O}\"}}";
@@ -126,16 +126,16 @@ public class MessageExtensionsTests
     public void Should_MeasureProtobufSize_WhenSerializingDifferentMessageSizes()
     {
         // Given - Small message
-        var smallMessage = new Message<string>("svc", "Hi");
+        var smallMessage = new Entry<string>("svc", "Hi");
         var smallBytes = smallMessage.ToBytes();
 
         // Given - Medium message
-        var mediumMessage = new Message<string>("payment-service", "Processing payment for order #12345");
+        var mediumMessage = new Entry<string>("payment-service", "Processing payment for order #12345");
         var mediumBytes = mediumMessage.ToBytes();
 
         // Given - Large message
         var largeContent = new string('A', 1000); // 1KB of 'A' characters
-        var largeMessage = new Message<string>("data-processor-service", largeContent);
+        var largeMessage = new Entry<string>("data-processor-service", largeContent);
         var largeBytes = largeMessage.ToBytes();
 
         // Then - Log size measurements
@@ -156,7 +156,7 @@ public class MessageExtensionsTests
     public void Should_PreserveUtcTimestamp_WhenSerializingAndDeserializing()
     {
         // Given
-        var message = new Message<string>("time-service", "UTC test") { CreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, TimeSpan.Zero) };
+        var message = new Entry<string>("time-service", "UTC test") { CreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, TimeSpan.Zero) };
 
         // When
         var bytes = message.ToBytes();
@@ -173,7 +173,7 @@ public class MessageExtensionsTests
         // Given
         var pacificOffset = TimeSpan.FromHours(-8);
         var pacificTimestamp = new DateTimeOffset(2025, 11, 24, 10, 30, 0, pacificOffset);
-        var message = new Message<string>("timezone-service", "PST test") { CreatedAt = pacificTimestamp };
+        var message = new Entry<string>("timezone-service", "PST test") { CreatedAt = pacificTimestamp };
 
         // When
         var bytes = message.ToBytes();
@@ -207,7 +207,7 @@ public class MessageExtensionsTests
     public void Should_UseSerializeAlias_WhenSerializingMessage()
     {
         // Given
-        var message = new Message<string>("serialize-test", "alias test");
+        var message = new Entry<string>("serialize-test", "alias test");
 
         // When
         var bytesFromSerialize = message.Serialize();
@@ -221,7 +221,7 @@ public class MessageExtensionsTests
     public void Should_UseDeserializeAlias_WhenDeserializingBytes()
     {
         // Given
-        var message = new Message<string>("deserialize-test", "alias test");
+        var message = new Entry<string>("deserialize-test", "alias test");
         var bytes = message.ToBytes();
 
         // When
@@ -239,7 +239,7 @@ public class MessageExtensionsTests
     public void Should_HandleEmptyContent_WhenSerializingAndDeserializing()
     {
         // Given
-        var message = new Message<string>("empty-content-producer", string.Empty);
+        var message = new Entry<string>("empty-content-producer", string.Empty);
 
         // When
         var bytes = message.ToBytes();
@@ -255,7 +255,7 @@ public class MessageExtensionsTests
     {
         // Given
         var unicodeContent = "Hello 世界 🚀 Здравствуй мир";
-        var message = new Message<string>("unicode-service", unicodeContent);
+        var message = new Entry<string>("unicode-service", unicodeContent);
 
         // When
         var bytes = message.ToBytes();
@@ -270,7 +270,7 @@ public class MessageExtensionsTests
     {
         // Given
         var longContent = new string('X', 10000); // 10KB content
-        var message = new Message<string>("large-content-producer", longContent);
+        var message = new Entry<string>("large-content-producer", longContent);
 
         // When
         var bytes = message.ToBytes();

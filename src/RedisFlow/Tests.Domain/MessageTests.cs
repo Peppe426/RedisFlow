@@ -7,22 +7,6 @@ namespace Tests.Domain;
 public class MessageTests
 {
     [Test]
-    public void Should_CreateMessage_WhenUsingParameterlessConstructor()
-    {
-        // Given
-        var expectedProducer = default(ProducerReference);
-        var expectedContent = default(string);
-
-        // When
-        var message = new Message<string>();
-
-        // Then
-        message.Producer.Should().Be(expectedProducer, "because default constructor leaves Producer uninitialized");
-        message.Content.Should().Be(expectedContent, "because default constructor leaves Content uninitialized");
-        message.CreatedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1), "because CreatedAt should be initialized to current UTC time");
-    }
-
-    [Test]
     public void Should_CreateMessage_WhenUsingProducerAndContentConstructor()
     {
         // Given
@@ -30,7 +14,7 @@ public class MessageTests
         var expectedContent = "test content";
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent);
+        var message = new Entry<string>(expectedProducer, expectedContent);
 
         // Then
         message.Producer.Value.Should().Be(expectedProducer, "because the constructor should set the producer");
@@ -47,7 +31,7 @@ public class MessageTests
         var expectedCreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, TimeSpan.Zero);
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
+        var message = new Entry<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
 
         // Then
         message.Producer.Value.Should().Be(expectedProducer, "because the constructor should set the producer");
@@ -62,7 +46,7 @@ public class MessageTests
         var expectedProducerName = "payment-service";
 
         // When
-        var message = new Message<string>(expectedProducerName, "");
+        var message = new Entry<string>(expectedProducerName, "");
 
         // Then
         message.Producer.Value.Should().Be(expectedProducerName, "because ProducerReference supports implicit conversion from string");
@@ -75,7 +59,7 @@ public class MessageTests
         var expectedContent = "new content";
 
         // When
-        var message = new Message<string>("TestProducer", expectedContent);
+        var message = new Entry<string>("TestProducer", expectedContent);
 
         // Then
         message.Content.Should().Be(expectedContent, "because Content property should be settable");
@@ -89,11 +73,11 @@ public class MessageTests
         var expectedContent = new { OrderId = 123, Amount = 99.99m };
 
         // When
-        var message = new Message<object>(expectedProducer, expectedContent);
+        var message = new Entry<object>(expectedProducer, expectedContent);
 
         // Then
         message.Producer.Value.Should().Be(expectedProducer, "because the producer should be set correctly");
-        message.Content.Should().BeEquivalentTo(expectedContent, "because Message supports generic content types");
+        message.Content.Should().BeEquivalentTo(expectedContent, "because Entry supports generic content types");
     }
 
     [Test]
@@ -104,11 +88,11 @@ public class MessageTests
         var expectedContent = 42;
 
         // When
-        var message = new Message<int>(expectedProducer, expectedContent);
+        var message = new Entry<int>(expectedProducer, expectedContent);
 
         // Then
         message.Producer.Value.Should().Be(expectedProducer, "because the producer should be set correctly");
-        message.Content.Should().Be(expectedContent, "because Message supports value type content");
+        message.Content.Should().Be(expectedContent, "because Entry supports value type content");
     }
 
     [Test]
@@ -121,7 +105,7 @@ public class MessageTests
         var expectedCreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, pacificOffset);
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
+        var message = new Entry<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
 
         // Then
         message.CreatedAt.Should().Be(expectedCreatedAt, "because the constructor should preserve the timezone information");
@@ -137,7 +121,7 @@ public class MessageTests
         var beforeCreation = DateTimeOffset.UtcNow;
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent);
+        var message = new Entry<string>(expectedProducer, expectedContent);
         var afterCreation = DateTimeOffset.UtcNow;
 
         // Then
@@ -154,10 +138,10 @@ public class MessageTests
         string? expectedContent = null;
 
         // When
-        var message = new Message<string?>(expectedProducer, expectedContent);
+        var message = new Entry<string?>(expectedProducer, expectedContent);
 
         // Then
-        message.Content.Should().BeNull("because Message supports nullable content types");
+        message.Content.Should().BeNull("because Entry supports nullable content types");
     }
 
     [Test]
@@ -168,10 +152,10 @@ public class MessageTests
         var expectedContent = new List<string> { "item1", "item2", "item3" };
 
         // When
-        var message = new Message<List<string>>(expectedProducer, expectedContent);
+        var message = new Entry<List<string>>(expectedProducer, expectedContent);
 
         // Then
-        message.Content.Should().BeEquivalentTo(expectedContent, "because Message supports collection content types");
+        message.Content.Should().BeEquivalentTo(expectedContent, "because Entry supports collection content types");
         message.Content.Count.Should().Be(3, "because all items should be preserved");
     }
 
@@ -179,7 +163,7 @@ public class MessageTests
     public void Should_HaveInitOnlyCreatedAt_WhenTryingToModifyAfterConstruction()
     {
         // Given
-        var message = new Message<string>("test-producer", "test content");
+        var message = new Entry<string>("test-producer", "test content");
         var originalCreatedAt = message.CreatedAt;
 
         // When
@@ -198,7 +182,7 @@ public class MessageTests
         var content = "versioned producer test";
 
         // When
-        var message = new Message<string>(producerString, content);
+        var message = new Entry<string>(producerString, content);
 
         // Then
         message.Producer.Value.Should().Be(producerString, "because string should implicitly convert to ProducerReference");

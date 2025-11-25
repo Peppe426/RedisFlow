@@ -21,7 +21,7 @@ public class MessageTests
         var content = GenerateEcgContent();
 
         var timestamp = new DateTimeOffset(2025, 11, 24, 15, 30, 45, 123, TimeSpan.Zero);
-        var message = new Message<string>(producer, content) { CreatedAt = timestamp };
+        var message = new Entry<string>(producer, content) { CreatedAt = timestamp };
 
         // When - Serialize using Protobuf
         var protobufBytes = message.ToBytes();
@@ -36,7 +36,7 @@ public class MessageTests
         {
             using (var writer = XmlWriter.Create(memoryStream, new XmlWriterSettings { Encoding = Encoding.UTF8 }))
             {
-                writer.WriteStartElement("Message");
+                writer.WriteStartElement("Entry");
                 writer.WriteElementString("Producer", message.Producer.Value);
                 writer.WriteElementString("Content", message.Content);
                 writer.WriteElementString("CreatedAt", message.CreatedAt.ToString("o"));
@@ -58,7 +58,7 @@ public class MessageTests
 
         // Then - Log detailed comparison
         TestContext.Out.WriteLine("=== Serialization Format Comparison (Non-Functional Test) ===");
-        TestContext.Out.WriteLine($"Message Producer: {producer}");
+        TestContext.Out.WriteLine($"Entry Producer: {producer}");
         TestContext.Out.WriteLine($"Content Length: {content.Length} characters");
         TestContext.Out.WriteLine("");
         TestContext.Out.WriteLine("--- Size Measurements ---");
