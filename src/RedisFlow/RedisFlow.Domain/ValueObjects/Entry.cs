@@ -3,10 +3,10 @@
 namespace RedisFlow.Domain.ValueObjects;
 
 /// <summary>
-/// Domain message representing a message in the Redis stream
+/// Represents a domain event message in the Redis stream, containing a producer identifier, message content, and creation timestamp.
 /// </summary>
 /// <typeparam name="TContent">The type of the message content</typeparam>
-public record Message<TContent> : IDomainEvent
+public record Entry<TContent> : IDomainEvent
 {
     /// <summary>
     /// Producer identifier
@@ -19,15 +19,11 @@ public record Message<TContent> : IDomainEvent
     public TContent Content { get; private set; } = default!;
 
     /// <summary>
-    /// Timestamp when the message was created
+    /// Timestamp when the message was created (UTC)
     /// </summary>
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
-    public Message()
-    {
-    }
-
-    public Message(string producer, TContent content)
+    public Entry(string producer, TContent content)
     {
         Producer = producer;
         Content = content;
