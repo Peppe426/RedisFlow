@@ -4,17 +4,17 @@
 /// Domain message representing a message in the Redis stream
 /// </summary>
 /// <typeparam name="TContent">The type of the message content</typeparam>
-public class Message<TContent>
+public record Message<TContent>
 {
     /// <summary>
     /// Producer identifier
     /// </summary>
-    public ProducerReference Producer { get; set; } = default!;
+    public ProducerReference Producer { get; private set; } = default!;
 
     /// <summary>
     /// Message content
     /// </summary>
-    public TContent Content { get; set; } = default!;
+    public TContent Content { get; private set; } = default!;
 
     /// <summary>
     /// Timestamp when the message was created

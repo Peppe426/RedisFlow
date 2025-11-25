@@ -1,5 +1,5 @@
 using System.Text;
-using System.Xml.Serialization;
+using System.Xml;
 using Bogus;
 using FluentAssertions;
 using RedisFlow.Domain.Extensions;
@@ -31,11 +31,17 @@ public class MessageTests
         var jsonBytes = Encoding.UTF8.GetBytes(jsonRepresentation);
 
         // When - Serialize using XML
-        var xmlSerializer = new XmlSerializer(typeof(Message<string>));
         byte[] xmlBytes;
         using (var memoryStream = new System.IO.MemoryStream())
         {
-            xmlSerializer.Serialize(memoryStream, message);
+            using (var writer = XmlWriter.Create(memoryStream, new XmlWriterSettings { Encoding = Encoding.UTF8 }))
+            {
+                writer.WriteStartElement("Message");
+                writer.WriteElementString("Producer", message.Producer.Value);
+                writer.WriteElementString("Content", message.Content);
+                writer.WriteElementString("CreatedAt", message.CreatedAt.ToString("o"));
+                writer.WriteEndElement();
+            }
             xmlBytes = memoryStream.ToArray();
         }
 
@@ -67,11 +73,13 @@ public class MessageTests
         // Then - Assert Protobuf efficiency
         protobufSize.Should().BeLessThan(jsonSize,
             "because protobuf binary format should be more compact than JSON text format");
+
         protobufSize.Should().BeLessThan(xmlSize,
             "because protobuf binary format should be more compact than XML text format");
 
         jsonSavingsPercent.Should().BeGreaterThan(0,
             "because protobuf should provide measurable size reduction over JSON");
+
         xmlSavingsPercent.Should().BeGreaterThan(0,
             "because protobuf should provide measurable size reduction over XML");
     }

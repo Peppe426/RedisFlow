@@ -1,6 +1,4 @@
-using System;
 using FluentAssertions;
-using NUnit.Framework;
 using RedisFlow.Domain.ValueObjects;
 
 namespace Tests.Domain;
@@ -61,11 +59,10 @@ public class MessageTests
     public void Should_SetProducer_WhenAssigningStringToProducerProperty()
     {
         // Given
-        var message = new Message<string>();
         var expectedProducerName = "payment-service";
 
         // When
-        message.Producer = expectedProducerName;
+        var message = new Message<string>(expectedProducerName, "");
 
         // Then
         message.Producer.Value.Should().Be(expectedProducerName, "because ProducerReference supports implicit conversion from string");
@@ -75,11 +72,10 @@ public class MessageTests
     public void Should_SetContent_WhenAssigningValueToContentProperty()
     {
         // Given
-        var message = new Message<string>();
         var expectedContent = "new content";
 
         // When
-        message.Content = expectedContent;
+        var message = new Message<string>("TestProducer", expectedContent);
 
         // Then
         message.Content.Should().Be(expectedContent, "because Content property should be settable");
