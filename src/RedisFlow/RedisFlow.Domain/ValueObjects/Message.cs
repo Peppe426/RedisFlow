@@ -1,10 +1,12 @@
-﻿namespace RedisFlow.Domain.ValueObjects;
+﻿using RedisFlow.Domain.Base;
+
+namespace RedisFlow.Domain.ValueObjects;
 
 /// <summary>
 /// Domain message representing a message in the Redis stream
 /// </summary>
 /// <typeparam name="TContent">The type of the message content</typeparam>
-public record Message<TContent>
+public record Message<TContent> : IDomainEvent
 {
     /// <summary>
     /// Producer identifier
