@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
-var redis = builder.AddRedis("redis");
+IResourceBuilder<RedisResource> redis = builder.AddRedis("redis");
 
 builder.Build().Run();
