@@ -3,35 +3,37 @@
 /// <summary>
 /// Domain message representing a message in the Redis stream
 /// </summary>
-public class Message
+/// <typeparam name="TContent">The type of the message content</typeparam>
+public class Message<TContent>
 {
     /// <summary>
     /// Producer identifier
     /// </summary>
-    public string Producer { get; set; } = string.Empty;
+    public ProducerReference Producer { get; set; } = default!;
 
     /// <summary>
     /// Message content
     /// </summary>
-    public string Content { get; set; } = string.Empty;
+    public TContent Content { get; set; } = default!;
 
     /// <summary>
     /// Timestamp when the message was created
     /// </summary>
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
     public Message()
     {
     }
 
-    public Message(string producer, string content)
+    public Message(string producer, TContent content)
     {
         Producer = producer;
         Content = content;
-        CreatedAt = DateTime.UtcNow;
+        // CreatedAt auto-initialized to UtcNow
+        CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public Message(string producer, string content, DateTime createdAt)
+    public Message(string producer, TContent content, DateTimeOffset createdAt)
     {
         Producer = producer;
         Content = content;
