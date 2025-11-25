@@ -34,9 +34,8 @@ public static class MessageExtensions
             : new DateTimeOffset(utcDateTime, TimeSpan.Zero);
         return new ValueObjects.Message<string>(
             protoMessage.Producer,
-            protoMessage.Content,
-            dto
-        );
+            protoMessage.Content
+        ) { CreatedAt = dto };
     }
 
     /// <summary>

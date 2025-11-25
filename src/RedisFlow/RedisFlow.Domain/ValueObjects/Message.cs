@@ -29,14 +29,5 @@ public class Message<TContent>
     {
         Producer = producer;
         Content = content;
-        // CreatedAt auto-initialized to UtcNow
-        CreatedAt = DateTimeOffset.UtcNow;
-    }
-
-    public Message(string producer, TContent content, DateTimeOffset createdAt)
-    {
-        Producer = producer;
-        Content = content;
-        CreatedAt = createdAt;
     }
 }
