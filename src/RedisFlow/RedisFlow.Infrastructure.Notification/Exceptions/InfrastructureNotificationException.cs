@@ -1,4 +1,4 @@
-﻿namespace RedisFlow.Infrastructure.IO.Exceptions;
+﻿namespace RedisFlow.Infrastructure.Notification.Exceptions;
 
 internal class InfrastructureNotificationException : Exception
 {
