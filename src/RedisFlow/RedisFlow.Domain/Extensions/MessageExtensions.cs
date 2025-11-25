@@ -13,7 +13,7 @@ public static class MessageExtensions
     /// <summary>
     /// Converts a domain Message to a protobuf MessageProto for serialization
     /// </summary>
-    public static MessageProto ToProto(this Message<string> domainMessage)
+    public static MessageProto ToProto(this Entry<string> domainMessage)
     {
         return new MessageProto
         {
@@ -27,13 +27,13 @@ public static class MessageExtensions
     /// <summary>
     /// Converts a protobuf MessageProto to a domain Message for consumption
     /// </summary>
-    public static Message<string> ToDomain(this MessageProto protoMessage)
+    public static Entry<string> ToDomain(this MessageProto protoMessage)
     {
         var utcDateTime = protoMessage.CreatedAt.ToDateTime(); // should be Kind=Utc
         var dto = utcDateTime.Kind == DateTimeKind.Utc
             ? new DateTimeOffset(utcDateTime)
             : new DateTimeOffset(utcDateTime, TimeSpan.Zero);
-        return new Message<string>(
+        return new Entry<string>(
             protoMessage.Producer,
             protoMessage.Content
         ) { CreatedAt = dto };
@@ -42,7 +42,7 @@ public static class MessageExtensions
     /// <summary>
     /// Converts a protobuf MessageProto to a domain Message (alias for ToDomain)
     /// </summary>
-    public static Message<string> FromProto(this MessageProto protoMessage)
+    public static Entry<string> FromProto(this MessageProto protoMessage)
     {
         return protoMessage.ToDomain();
     }
@@ -50,7 +50,7 @@ public static class MessageExtensions
     /// <summary>
     /// Serializes a domain Message to binary format using protobuf
     /// </summary>
-    public static byte[] ToBytes(this Message<string> domainMessage)
+    public static byte[] ToBytes(this Entry<string> domainMessage)
     {
         return domainMessage.ToProto().ToByteArray();
     }
@@ -58,7 +58,7 @@ public static class MessageExtensions
     /// <summary>
     /// Serializes a domain Message to binary format using protobuf (alias for ToBytes)
     /// </summary>
-    public static byte[] Serialize(this Message<string> domainMessage)
+    public static byte[] Serialize(this Entry<string> domainMessage)
     {
         return domainMessage.ToBytes();
     }
@@ -66,7 +66,7 @@ public static class MessageExtensions
     /// <summary>
     /// Deserializes a protobuf MessageProto from binary format to domain Message
     /// </summary>
-    public static Message<string> FromBytes(byte[] bytes)
+    public static Entry<string> FromBytes(byte[] bytes)
     {
         return MessageProto.Parser.ParseFrom(bytes).ToDomain();
     }
@@ -74,7 +74,7 @@ public static class MessageExtensions
     /// <summary>
     /// Deserializes a protobuf MessageProto from binary format to domain Message (alias for FromBytes)
     /// </summary>
-    public static Message<string> Deserialize(byte[] bytes)
+    public static Entry<string> Deserialize(byte[] bytes)
     {
         return FromBytes(bytes);
     }
