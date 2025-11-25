@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RedisFlow.Domain.ValueObjects;
+using RedisFlow.Domain.Messages;
 using RedisFlow.Services.Contracts;
 using StackExchange.Redis;
 
@@ -188,13 +189,12 @@ public class RedisStreamConsumer : IConsumer
                     "Stream entry {MessageId} has no data field",
                     entry.Id);
                 
-                // Acknowledge invalid message to remove it from pending
                 await db.StreamAcknowledgeAsync(_streamKey, _groupName, entry.Id);
                 return;
             }
 
             var data = (byte[])dataField.Value!;
-            var message = MessageMapper.Deserialize(data);
+            var message = MessageExtensions.Deserialize(data);
 
             _logger.LogDebug(
                 "Processing message {MessageId} from stream {StreamKey}. Producer: {Producer}, Content: {Content}",
@@ -203,10 +203,8 @@ public class RedisStreamConsumer : IConsumer
                 message.Producer,
                 message.Content);
 
-            // Invoke the handler
             await handler(message, cancellationToken);
 
-            // Acknowledge the message atomically after successful processing
             await db.StreamAcknowledgeAsync(_streamKey, _groupName, entry.Id);
 
             _logger.LogDebug(
@@ -222,7 +220,6 @@ public class RedisStreamConsumer : IConsumer
                 entry.Id,
                 _streamKey);
             
-            // Don't acknowledge on error - message will remain in pending list for retry
             throw;
         }
     }
