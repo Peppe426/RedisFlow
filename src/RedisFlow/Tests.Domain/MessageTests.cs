@@ -49,7 +49,7 @@ public class MessageTests
         var expectedCreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, TimeSpan.Zero);
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent, expectedCreatedAt);
+        var message = new Message<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
 
         // Then
         message.Producer.Value.Should().Be(expectedProducer, "because the constructor should set the producer");
@@ -125,7 +125,7 @@ public class MessageTests
         var expectedCreatedAt = new DateTimeOffset(2025, 11, 24, 10, 30, 0, pacificOffset);
 
         // When
-        var message = new Message<string>(expectedProducer, expectedContent, expectedCreatedAt);
+        var message = new Message<string>(expectedProducer, expectedContent) { CreatedAt = expectedCreatedAt };
 
         // Then
         message.CreatedAt.Should().Be(expectedCreatedAt, "because the constructor should preserve the timezone information");
