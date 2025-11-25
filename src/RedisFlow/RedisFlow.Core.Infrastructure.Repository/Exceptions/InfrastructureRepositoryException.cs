@@ -1,4 +1,4 @@
-﻿namespace RedisFlow.Infrastructure.IO.Exceptions;
+﻿namespace RedisFlow.Infrastructure.Repository.Exceptions;
 
 internal class InfrastructureRepositoryException : Exception
 {
