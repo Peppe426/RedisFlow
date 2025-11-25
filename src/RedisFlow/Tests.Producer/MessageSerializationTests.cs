@@ -44,7 +44,7 @@ public class MessageSerializationTests
     public void Should_PreserveTimestamp_When_MessageHasSpecificCreatedAt()
     {
         // Given
-        var specificTime = new DateTime(2025, 11, 3, 22, 0, 0, DateTimeKind.Utc);
+        var specificTime = new DateTimeOffset(2025, 11, 3, 22, 0, 0, TimeSpan.Zero);
         var message = new RedisFlow.Domain.ValueObjects.Message("Producer1", "Test content", specificTime);
 
         // When
