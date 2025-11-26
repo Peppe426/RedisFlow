@@ -22,14 +22,22 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
 
     public StreamHandler(string host, int port, string streamName, string? password = null, bool connectOnInit = false)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(host);
-        if (port <= 0 || port > 65535) throw new ArgumentOutOfRangeException(nameof(port));
-        ArgumentException.ThrowIfNullOrWhiteSpace(streamName);
+        ValidateConstructorArguments(host, port, streamName);
 
         Connection = new Connection(host, port, password);
         StreamName = streamName;
 
         if (connectOnInit) Connect();
+    }
+
+    private static void ValidateConstructorArguments(string host, int port, string streamName)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            throw new StreamHandlerException("Host cannot be null or whitespace.");
+        if (port <= 0 || port > 65535)
+            throw new StreamHandlerException($"Port must be between 1 and 65535. Provided: {port}");
+        if (string.IsNullOrWhiteSpace(streamName))
+            throw new StreamHandlerException("Stream name cannot be null or whitespace.");
     }
 
     public void Connect(bool forceReconnect = false)
