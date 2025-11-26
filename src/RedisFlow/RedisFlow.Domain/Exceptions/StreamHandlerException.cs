@@ -1,6 +1,10 @@
-﻿namespace RedisFlow.Domain.Exceptions;
+﻿using RedisFlow.Core.Exceptions;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
-internal class StreamHandlerException : Exception
+namespace RedisFlow.Domain.Exceptions;
+
+internal class StreamHandlerException : DomainException
 {
     public StreamHandlerException()
     {
