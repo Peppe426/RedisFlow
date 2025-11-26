@@ -23,6 +23,5 @@ public class Connection
         Host = host;
         Port = port;
         Password = password;
-        Password = password;
     }
 }
