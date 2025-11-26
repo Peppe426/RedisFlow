@@ -47,12 +47,10 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
 
     private static void ValidateConstructorArguments(string host, int port, string streamName)
     {
-        if (string.IsNullOrWhiteSpace(host))
-            throw new StreamHandlerException("Host cannot be null or whitespace.");
+        StreamHandlerException.ThrowIfNullOrWhiteSpace(host);
         if (port <= 0 || port > 65535)
             throw new StreamHandlerException($"Port must be between 1 and 65535. Provided: {port}");
-        if (string.IsNullOrWhiteSpace(streamName))
-            throw new StreamHandlerException("Stream name cannot be null or whitespace.");
+        StreamHandlerException.ThrowIfNullOrWhiteSpace(streamName);
     }
 
     public void Connect(bool forceReconnect = false)
@@ -195,7 +193,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
 
     public async Task CreateConsumerGroupAsync(string groupName,RedisValue startId = default, bool makeStream = true)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
+        StreamHandlerException.ThrowIfNullOrWhiteSpace(groupName);
 
         EnsureConnected();
         if (startId.IsNullOrEmpty) startId = "0-0";
@@ -246,7 +244,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         }
         catch (Exception ex)
         {
-            throw new StreamHandlerException($"Redis operation failed on stream '{StreamName}'", ex);
+            throw new StreamHandlerException $"Redis operation failed on stream '{StreamName}'", ex);
         }
     }
 
