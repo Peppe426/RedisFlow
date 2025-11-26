@@ -5,6 +5,16 @@ using StackExchange.Redis;
 
 namespace RedisFlow.Domain.Aggregates;
 
+public sealed class EntryOptions
+{
+    public RedisValue? MessageId { get; set; } = null;
+    public long? MaxLength { get; set; } = null;
+    public bool ApproximateTrimming { get; set; } = true;
+    public long? Limit { get; set; } = null;
+    public StreamTrimMode TrimMode { get; set; } = StreamTrimMode.Acknowledged;
+    public CommandFlags Flags { get; set; } = CommandFlags.None;
+}
+
 public sealed record StreamHandler : AggregateRoot, IDisposable
 {
     public Connection Connection
@@ -19,6 +29,11 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
     private ConnectionMultiplexer? _muxer;
     private IDatabase? _db;
     private readonly object _connectLock = new();
+
+    public EntryOptions EntryOptions
+    {
+        get; private set;
+    } = new();
 
     public StreamHandler(string host, int port, string streamName, string? password = null, bool connectOnInit = false)
     {
@@ -98,31 +113,25 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
             Connect(forceReconnect: true);
     }
 
-    public async Task<RedisValue> AddAsync(
-        NameValueEntry[] entries,
-        RedisValue? messageId = null,
-        long? maxLength = null,
-        bool approximateTrimming = false,
-        long? limit = null,
-        StreamTrimMode trimMode = StreamTrimMode.KeepReferences,
-        CommandFlags flags = CommandFlags.None)
+    public async Task<RedisValue> AddAsync(NameValueEntry[] entries, EntryOptions? options = null)
     {
         if (entries is null || entries.Length == 0)
-            throw new ArgumentException("Entries cannot be null or empty.", nameof(entries));
+            throw new StreamHandlerException("Will not add empty entries.", new ArgumentException("Entries cannot be null or empty.", nameof(entries)));
 
         EnsureConnected();
+        options ??= EntryOptions;
 
         try
         {
             return await _db!.StreamAddAsync(
                 key: StreamName,
                 streamPairs: entries,
-                messageId: messageId,
-                maxLength: maxLength,
-                useApproximateMaxLength: approximateTrimming,
-                limit: limit,
-                trimMode: trimMode,
-                flags: flags).ConfigureAwait(false);
+                messageId: options.MessageId,
+                maxLength: options.MaxLength,
+                useApproximateMaxLength: options.ApproximateTrimming,
+                limit: options.Limit,
+                trimMode: options.TrimMode,
+                flags: options.Flags).ConfigureAwait(false);
         }
         catch (RedisTimeoutException ex)
         {
@@ -135,40 +144,13 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         catch (RedisServerException ex) when (ex.Message.Contains("unknown command") || ex.Message.Contains("trimMode"))
         {
             throw new StreamHandlerException(
-                $"Redis server does not support the requested trim mode '{trimMode}'. Requires Redis 8.2+ for DeleteReferences/Acknowledged.", ex);
+                $"Redis server does not support the requested trim mode '{options.TrimMode}'. Requires Redis 8.2+ for DeleteReferences/Acknowledged.", ex);
         }
         catch (Exception ex)
         {
             throw new StreamHandlerException($"Failed to add message to stream '{StreamName}'", ex);
         }
     }
-
-    public Task<RedisValue> AddAsync(
-        NameValueEntry[] entries,
-        RedisValue? messageId = null,
-        int? maxLength = null,
-        bool useApproximateMaxLength = true,
-        CommandFlags flags = CommandFlags.None)
-        => AddAsync(entries, messageId, maxLength, useApproximateMaxLength, null, StreamTrimMode.KeepReferences, flags);
-
-    public Task<RedisValue> AddAsync(
-        IReadOnlyDictionary<string, string> fields,
-        long? maxLength = null,
-        bool approximateTrimming = true,
-        CommandFlags flags = CommandFlags.None)
-    {
-        if (fields is null || fields.Count == 0)
-            throw new ArgumentException("Fields cannot be null or empty.", nameof(fields));
-
-        var entries = fields.Select(kv => new NameValueEntry(kv.Key, kv.Value)).ToArray();
-        return AddAsync(entries, maxLength: maxLength, approximateTrimming: approximateTrimming, flags: flags);
-    }
-
-    public Task<RedisValue> AddAsync(IReadOnlyDictionary<string, string> fields, long approximateMaxLength)
-        => AddAsync(fields, maxLength: approximateMaxLength, approximateTrimming: true);
-
-    public Task<RedisValue> AddAsync(IReadOnlyDictionary<string, string> fields)
-        => AddAsync(fields, maxLength: null);
 
     public async Task<StreamEntry[]> ReadAsync(
         string? groupName = null,
@@ -211,10 +193,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         }
     }
 
-    public async Task CreateConsumerGroupAsync(
-        string groupName,
-        RedisValue startId = default,
-        bool makeStream = true)
+    public async Task CreateConsumerGroupAsync(string groupName,RedisValue startId = default, bool makeStream = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
 
@@ -227,7 +206,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         }
         catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
         {
-            // Idempotent – group already exists
+            // group already exists, ignore
         }
         catch (Exception ex)
         {
