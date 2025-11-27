@@ -5,58 +5,34 @@ using StackExchange.Redis;
 
 namespace RedisFlow.Domain.Aggregates;
 
-public sealed class EntryOptions
-{
-    public RedisValue? MessageId { get; init; } = "*"; // using null or * default to auto-generated ID, preferred
-    public long? MaxLength { get; init; } = null;
-    public bool ApproximateTrimming { get; init; } = true;
-    public long? Limit { get; init; } = null;
-    public StreamTrimMode TrimMode { get; init; } = StreamTrimMode.KeepReferences;
-    public CommandFlags Flags { get; init; } = CommandFlags.None;
-}
-
-public sealed class RedisConnectionOptions
-{
-    public bool AbortOnConnectFail { get; init; } = false;
-    public int ConnectTimeout { get; init; } = 5000;
-    public int SyncTimeout { get; init; } = 10000;
-    public int AsyncTimeout { get; init; } = 10000;
-    public int ReconnectRetryInitial { get; init; } = 500;
-    public int ReconnectRetryMax { get; init; } = 10000;
-    public bool? Ssl { get; init; } = null; // If null, use default logic
-    public string? ClientName { get; init; } = null;
-}
-
 public sealed record StreamHandler : AggregateRoot, IDisposable
 {
-    public Connection Connection
-    {
-        get;
-    }
     public string StreamName
     {
         get;
     }
-
-    private ConnectionMultiplexer? _muxer;
-    private IDatabase? _db;
-    private readonly object _connectLock = new();
-
-    public EntryOptions EntryOptions
+    public RedisConnection RedisConnection
+    {
+        get;
+    }
+    public RedisEntryOptions RedisEntryOptions
     {
         get; private set;
     } = new();
-
     public RedisConnectionOptions RedisConnectionOptions
     {
         get; private set;
     } = new();
 
+    private ConnectionMultiplexer? _muxer;
+    private IDatabase? _db;
+    private readonly object _connectLock = new();
+
     public StreamHandler(string host, int port, string streamName, string? password = null, bool connectOnInit = false, RedisConnectionOptions? redisConnectionOptions = null)
     {
         ValidateConstructorArguments(host, port, streamName);
 
-        Connection = new Connection(host, port, password);
+        RedisConnection = new RedisConnection(host, port, password);
         StreamName = streamName;
         RedisConnectionOptions = redisConnectionOptions ?? new RedisConnectionOptions();
 
@@ -84,14 +60,14 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
                 Disconnect();
                 var options = new ConfigurationOptions
                 {
-                    EndPoints = { { Connection.Host, Connection.Port } },
-                    Password = Connection.Password,
+                    EndPoints = { { RedisConnection.Host, RedisConnection.Port } },
+                    Password = RedisConnection.Password,
                     AbortOnConnectFail = RedisConnectionOptions.AbortOnConnectFail,
                     ConnectTimeout = RedisConnectionOptions.ConnectTimeout,
                     SyncTimeout = RedisConnectionOptions.SyncTimeout,
                     AsyncTimeout = RedisConnectionOptions.AsyncTimeout,
                     ReconnectRetryPolicy = new ExponentialRetry(RedisConnectionOptions.ReconnectRetryInitial, RedisConnectionOptions.ReconnectRetryMax),
-                    Ssl = RedisConnectionOptions.Ssl ?? (Connection.Port == 6380 || Connection.Host.Contains("redis.cache")),//todo make sure we can use ssl properly
+                    Ssl = RedisConnectionOptions.Ssl ?? (RedisConnection.Port == 6380 || RedisConnection.Host.Contains("redis.cache")),//todo make sure we can use ssl properly
                     ClientName = RedisConnectionOptions.ClientName ?? $"StreamHandler-{StreamName}"
                 };
 
@@ -100,7 +76,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
             }
             catch (Exception ex)
             {
-                throw new StreamHandlerException($"Failed to connect to Redis at {Connection.Host}:{Connection.Port}", ex);
+                throw new StreamHandlerException($"Failed to connect to Redis at {RedisConnection.Host}:{RedisConnection.Port}", ex);
             }
         }
         return this;
@@ -128,13 +104,13 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
             Connect(forceReconnect: true);
     }
 
-    public async Task<RedisValue> AddAsync(NameValueEntry[] entries, EntryOptions? options = null)
+    public async Task<RedisValue> AddAsync(NameValueEntry[] entries, RedisEntryOptions? options = null)
     {
         if (entries is null || entries.Length == 0)
             throw new StreamHandlerException("Will not add empty entries.", new ArgumentException("Entries cannot be null or empty.", nameof(entries)));
 
         EnsureConnected();
-        options ??= EntryOptions;
+        options ??= RedisEntryOptions;
 
         // Validate MessageId
         if (options.MessageId is not null)
@@ -197,7 +173,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
             }
 
             if (string.IsNullOrWhiteSpace(consumerName))
-                throw new ArgumentException("consumerName is required when groupName is provided.", nameof(consumerName));
+                throw new StreamHandlerException("Can not read from stream without consumer name", new ArgumentException("ConsumerName is required when groupName is provided.", nameof(consumerName)));
 
             var groupResult = await _db!.StreamReadGroupAsync(
                 key: StreamName,
