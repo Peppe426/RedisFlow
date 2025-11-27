@@ -1,6 +1,6 @@
 ﻿namespace RedisFlow.Domain.ValueObjects;
 
-public class Connection
+public class RedisConnection
 {
     public string Host
     {
@@ -18,7 +18,7 @@ public class Connection
         private set;
     }
 
-    public Connection(string host, int port, string? password = null)
+    public RedisConnection(string host, int port, string? password = null)
     {
         Host = host;
         Port = port;
