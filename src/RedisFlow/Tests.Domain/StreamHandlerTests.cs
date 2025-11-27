@@ -123,9 +123,9 @@ public class StreamHandlerTests
     {
         var streamName = "test-stream";
         var handler = new StreamHandler(_host, _port, streamName, _password);
-        handler.Connection.Host.Should().Be(_host);
-        handler.Connection.Port.Should().Be(_port);
-        handler.Connection.Password.Should().Be(_password);
+        handler.RedisConnection.Host.Should().Be(_host);
+        handler.RedisConnection.Port.Should().Be(_port);
+        handler.RedisConnection.Password.Should().Be(_password);
         handler.StreamName.Should().Be(streamName);
         handler.IsConnected.Should().BeFalse();
     }
@@ -173,8 +173,8 @@ public class StreamHandlerTests
         var port = 6380;
         var streamName = "my-stream";
         var handler = new StreamHandler(host, port, streamName);
-        handler.Connection.Host.Should().Be(host);
-        handler.Connection.Port.Should().Be(port);
+        handler.RedisConnection.Host.Should().Be(host);
+        handler.RedisConnection.Port.Should().Be(port);
         handler.StreamName.Should().Be(streamName);
     }
 
