@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace RedisFlow.Domain.Exceptions;
 
-internal class StreamHandlerException : DomainException
+public class StreamHandlerException : DomainException
 {
     public StreamHandlerException()
     {
