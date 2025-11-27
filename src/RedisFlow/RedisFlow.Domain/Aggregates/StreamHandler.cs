@@ -103,6 +103,26 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         if (_db is null || !IsConnected)
             Connect(forceReconnect: true);
     }
+    public async Task CreateConsumerGroupAsync(string groupName, RedisValue startId = default, bool makeStream = true)
+    {
+        StreamHandlerException.ThrowIfNullOrWhiteSpace(groupName);
+
+        EnsureConnected();
+        if (startId.IsNullOrEmpty) startId = "0-0";
+
+        try
+        {
+            await _db!.StreamCreateConsumerGroupAsync(StreamName, groupName, startId, makeStream).ConfigureAwait(false);
+        }
+        catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
+        {
+            // group already exists, ignore
+        }
+        catch (Exception ex)
+        {
+            throw new StreamHandlerException($"Failed to create consumer group '{groupName}' on stream '{StreamName}'", ex);
+        }
+    }
 
     public async Task<RedisValue> AddAsync(NameValueEntry[] entries, RedisEntryOptions? options = null)
     {
@@ -195,27 +215,6 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
         }
     }
 
-    public async Task CreateConsumerGroupAsync(string groupName, RedisValue startId = default, bool makeStream = true)
-    {
-        StreamHandlerException.ThrowIfNullOrWhiteSpace(groupName);
-
-        EnsureConnected();
-        if (startId.IsNullOrEmpty) startId = "0-0";
-
-        try
-        {
-            await _db!.StreamCreateConsumerGroupAsync(StreamName, groupName, startId, makeStream).ConfigureAwait(false);
-        }
-        catch (RedisServerException ex) when (ex.Message.Contains("BUSYGROUP"))
-        {
-            // group already exists, ignore
-        }
-        catch (Exception ex)
-        {
-            throw new StreamHandlerException($"Failed to create consumer group '{groupName}' on stream '{StreamName}'", ex);
-        }
-    }
-
     public async Task<long> AcknowledgeAsync(string groupName, params RedisValue[] messageIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(groupName);
@@ -236,7 +235,7 @@ public sealed record StreamHandler : AggregateRoot, IDisposable
     public Task<StreamInfo> GetInfoAsync()
         => Safe(() => _db!.StreamInfoAsync(StreamName));
 
-    public Task<StreamPendingInfo> GetPendingInfoAsync(string groupName)
+    public Task<StreamPendingInfo> GetPendingInfoForGroupAsync(string groupName)
         => Safe(() => _db!.StreamPendingAsync(StreamName, groupName));
 
     private async Task<T> Safe<T>(Func<Task<T>> operation)
